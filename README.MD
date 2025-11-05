@@ -5,8 +5,3 @@ pip3 install -r requirements.txt
 
 Usage:
 python soylock.py <name>
-
-#TODO
-- fix instagram
-- add ko-fi
-- add fapello.com
