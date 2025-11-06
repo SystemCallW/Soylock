@@ -1,3 +1,7 @@
+Changes: 0.16.4 (beta)
+Fixed:
+- Twitter
+
 Changes: 0.16.3 (beta)
 Added:
 - Arduino Forum

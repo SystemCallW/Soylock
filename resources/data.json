@@ -2522,7 +2522,7 @@
     "errorMsg": [
       "<div class=\"error-panel\"><span>User ",
       "<title>429 Too Many Requests</title>",
-      "This account doesn’t exist"
+      " not found"
     ],
     "errorType": "message",
     "regexCheck": "^[a-zA-Z0-9_]{1,15}$",
