@@ -1,6 +1,11 @@
 Changes: 0.16.4 (beta)
 Fixed:
+- hunting
+- phpRU
 - Twitter
+
+Removed:
+- Archive.org
 
 Changes: 0.16.3 (beta)
 Added:
