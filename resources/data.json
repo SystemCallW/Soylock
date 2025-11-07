@@ -86,7 +86,7 @@
   "AllMyLinks": {
     "errorMsg": "Not Found",
     "errorType": "message",
-    "regexCheck": "^[a-z0-9][a-z0-9-]{2,32}$",
+    "regexCheck": "^[A-Za-z0-9-]{2,32}$",
     "url": "https://allmylinks.com/{}",
     "urlMain": "https://allmylinks.com/",
     "username_claimed": "blue"
@@ -437,7 +437,7 @@
   "Chess": {
     "errorMsg": "Username is valid",
     "errorType": "message",
-    "regexCheck": "^[a-z1-9]{3,25}$",
+    "regexCheck": "^[A-Za-z0-9]{3,25}$",
     "url": "https://www.chess.com/member/{}",
     "urlMain": "https://www.chess.com/",
     "urlProbe": "https://www.chess.com/callback/user/valid?username={}",
@@ -448,6 +448,13 @@
     "url": "https://choice.community/u/{}/summary",
     "urlMain": "https://choice.community/",
     "username_claimed": "gordon"
+  },
+  "Chollometro": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.chollometro.com/profile/{}",
+    "urlMain": "https://www.chollometro.com/",
+    "username_claimed": "blue"
   },
   "Clapper": {
     "errorType": "status_code",
@@ -476,7 +483,7 @@
   },
   "CNET": {
     "errorType": "status_code",
-    "regexCheck": "^[a-z].*$",
+    "regexCheck": "^[A-Za-z0-9]{3,32}$",
     "url": "https://www.cnet.com/profiles/{}/",
     "urlMain": "https://www.cnet.com/",
     "username_claimed": "melliott"
@@ -1279,6 +1286,13 @@
     "urlProbe": "https://www.holopin.io/api/auth/username",
     "username_claimed": "red"
   },
+  "HotUKdeals": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.hotukdeals.com/profile/{}",
+    "urlMain": "https://www.hotukdeals.com/",
+    "username_claimed": "Blue"
+  },
   "Houzz": {
     "errorType": "status_code",
     "url": "https://houzz.com/user/{}",
@@ -1847,10 +1861,11 @@
     "urlMain": "https://myanimelist.net/",
     "username_claimed": "blue"
   },
-  "MyMiniFactory": {
+  "Mydealz": {
     "errorType": "status_code",
-    "url": "https://www.myminifactory.com/users/{}",
-    "urlMain": "https://www.myminifactory.com/",
+    "request_method": "GET",
+    "url": "https://www.mydealz.de/profile/{}",
+    "urlMain": "https://www.mydealz.de/",
     "username_claimed": "blue"
   },
   "Mydramalist": {
@@ -1859,6 +1874,12 @@
     "url": "https://www.mydramalist.com/profile/{}",
     "urlMain": "https://mydramalist.com",
     "username_claimed": "elhadidy12398"
+  },
+  "MyMiniFactory": {
+    "errorType": "status_code",
+    "url": "https://www.myminifactory.com/users/{}",
+    "urlMain": "https://www.myminifactory.com/",
+    "username_claimed": "blue"
   },
   "Myspace": {
     "errorType": "status_code",
@@ -2108,6 +2129,34 @@
     "urlMain": "https://pentesterlab.com/",
     "username_claimed": "0day"
   },
+  "Pepperdeals": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.pepperdeals.se/profile/{}",
+    "urlMain": "https://www.pepperdeals.se/",
+    "username_claimed": "Mark"
+  },
+  "PepperealsUS": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.pepperdeals.com/profile/{}",
+    "urlMain": "https://www.pepperdeals.com/",
+    "username_claimed": "Stepan"
+  },
+  "PepperNL": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://nl.pepper.com/profile/{}",
+    "urlMain": "https://nl.pepper.com/",
+    "username_claimed": "Dynaw"
+  },
+  "PepperPL": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.pepper.pl/profile/{}",
+    "urlMain": "https://www.pepper.pl/",
+    "username_claimed": "FireChicken"
+  },
   "Periscope": {
     "errorType": "status_code",
     "url": "https://www.periscope.tv/{}/",
@@ -2236,6 +2285,13 @@
     "urlProbe": "https://pr0gramm.com/api/profile/info?name={}",
     "username_claimed": "cha0s"
   },
+  "Preisjaeger": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.preisjaeger.at/profile/{}",
+    "urlMain": "https://www.preisjaeger.at/",
+    "username_claimed": "Stefan"
+  },
   "ProductHunt": {
     "errorType": "status_code",
     "url": "https://www.producthunt.com/@{}",
@@ -2255,6 +2311,13 @@
     "url": "https://programming.dev/u/{}",
     "urlMain": "https://programming.dev",
     "username_claimed": "pylapp"
+  },
+  "Promodescuentos": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.promodescuentos.com/profile/{}",
+    "urlMain": "https://www.promodescuentos.com/",
+    "username_claimed": "blue"
   },
   "PromoDJ": {
     "errorType": "status_code",
@@ -2362,14 +2425,6 @@
     "url": "https://replit.com/@{}",
     "urlMain": "https://replit.com/",
     "username_claimed": "blue"
-  },
-  "ResearchGate": {
-    "errorType": "response_url",
-    "errorUrl": "https://www.researchgate.net/directory/profiles",
-    "regexCheck": "\\w+_\\w+",
-    "url": "https://www.researchgate.net/profile/{}",
-    "urlMain": "https://www.researchgate.net/",
-    "username_claimed": "John_Smith"
   },
   "ReverbNation": {
     "errorMsg": "Sorry, we couldn't find that page",
@@ -2546,7 +2601,7 @@
   },
   "Snapchat": {
     "errorType": "status_code",
-    "regexCheck": "^[a-z][a-z-_.]{3,15}",
+    "regexCheck": "^[A-Za-z0-9-_.]{3,15}$",
     "request_method": "GET",
     "url": "https://www.snapchat.com/add/{}",
     "urlMain": "https://www.snapchat.com",
@@ -2848,7 +2903,7 @@
   },
   "Tuna": {
     "errorType": "status_code",
-    "regexCheck": "^[a-z0-9]{4,40}$",
+    "regexCheck": "^[A-Za-z0-9]{4,40}$",
     "url": "https://tuna.voicemod.net/user/{}",
     "urlMain": "https://tuna.voicemod.net/",
     "username_claimed": "bob"
@@ -2907,7 +2962,7 @@
   },
   "Unsplash": {
     "errorType": "status_code",
-    "regexCheck": "^[a-z0-9_]{1,60}$",
+    "regexCheck": "^[A-Za-z0-9_]{1,60}$",
     "url": "https://unsplash.com/@{}",
     "urlMain": "https://unsplash.com/",
     "username_claimed": "jenny"

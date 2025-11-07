@@ -1,11 +1,29 @@
 Changes: 0.16.4 (beta)
+Added:
+- Chollometro
+- HotUKdeals
+- Mydealz
+- Pepperdeals
+- PepperealsUS
+- PepperNL
+- PepperPL
+- Preisjaeger
+- Promodescuentos
+
 Fixed:
+- AllMyLinks
+- Chess
+- CNET
 - hunting
 - phpRU
+- Snapchat
+- Tuna
 - Twitter
+- Unsplash
 
 Removed:
 - Archive.org
+- ResearchGate
 
 Changes: 0.16.3 (beta)
 Added:
