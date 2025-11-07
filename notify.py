@@ -142,20 +142,7 @@ class QueryNotifyPrint(QueryNotify):
 
         return
 
-    def start(self, message):
-        """Notify Start.
-
-        Will print the title to the standard output.
-
-        Keyword Arguments:
-        self                   -- This object.
-        message                -- String containing username that the series
-                                  of queries are about.
-
-        Return Value:
-        Nothing.
-        """
-
+    def splash(self):
         splash = f"                       *                             o   {Fore.WHITE}.                        {Fore.LIGHTYELLOW_EX}.-.{Fore.WHITE}                                       .\n"
         splash += f"                 {Fore.LIGHTWHITE_EX}+#######+{Fore.WHITE}   .      {Fore.LIGHTWHITE_EX}+  *{Fore.WHITE}                           '       '  ~~{Fore.LIGHTWHITE_EX}+  {Fore.LIGHTYELLOW_EX}) ){Fore.WHITE}      '             .                  \n"
         splash += f"      .       {Fore.LIGHTWHITE_EX}+####-----####+{Fore.WHITE}                               .                     {Fore.LIGHTYELLOW_EX}'-´{Fore.WHITE}        .           {Fore.LIGHTWHITE_EX}+{Fore.WHITE}~~                 \n"
@@ -177,6 +164,22 @@ class QueryNotifyPrint(QueryNotify):
 
         print(splash)
 
+    def versionAlert(self, version):
+        print(f"{Fore.GREEN}New update available: {Fore.LIGHTGREEN_EX}{version} {Fore.GREEN}({Fore.LIGHTWHITE_EX}https://github.com/SystemCallW/Soylock{Fore.GREEN})")
+
+    def start(self, message):
+        """Notify Start.
+
+        Will print the title to the standard output.
+
+        Keyword Arguments:
+        self                   -- This object.
+        message                -- String containing username that the series
+                                  of queries are about.
+
+        Return Value:
+        Nothing.
+        """
         title = "Checking username"
 
         print(Style.BRIGHT + Fore.GREEN + "[" +
@@ -271,6 +274,13 @@ class QueryNotifyPrint(QueryNotify):
                       Fore.GREEN + f" {self.result.site_name}:" +
                       Fore.RED + " Blocked by bot detection" +
                       Fore.YELLOW + " (proxy may help)")
+        elif result.status == QueryStatus.UNIMPLEMENTED:
+            if self.print_all:
+                print(Style.BRIGHT + Fore.WHITE + "[" +
+                      Fore.RED + "-" +
+                      Fore.WHITE + "]" +
+                      Fore.GREEN + f" {self.result.site_name}:" +
+                      Fore.RED + " This site requires Browser Mode (unimplemented)")
 
         else:
             # It should be impossible to ever get here...

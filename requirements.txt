@@ -1,4 +1,4 @@
 pandas
 colorama
 requests
-requests_futures
+curl_cffi

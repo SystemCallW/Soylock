@@ -30,7 +30,7 @@
     "username_claimed": "blue"
   },
   "APClips": {
-    "errorType": "status_code",
+    "errorType": "response_url",
     "isNSFW": true,
     "url": "https://apclips.com/{}",
     "urlMain": "https://apclips.com/",
@@ -146,9 +146,10 @@
     "username_claimed": "system"
   },
   "ArtStation": {
-    "errorType": "status_code",
+    "errorType": "response_url",
     "url": "https://www.artstation.com/{}",
     "urlMain": "https://www.artstation.com/",
+    "urlProbe": "https://www.artstation.com/users/{}/quick.json",
     "username_claimed": "Blue"
   },
   "Asciinema": {
@@ -174,12 +175,6 @@
     "regexCheck": "^[a-zA-Z0-9_]+$",
     "url": "https://audiojungle.net/user/{}",
     "urlMain": "https://audiojungle.net/",
-    "username_claimed": "blue"
-  },
-  "AuthorSTREAM": {
-    "errorType": "status_code",
-    "url": "http://www.authorstream.com/{}/",
-    "urlMain": "http://www.authorstream.com/",
     "username_claimed": "blue"
   },
   "Autofrage": {
@@ -296,7 +291,7 @@
   "Bluesky": {
     "errorType": "status_code",
     "url": "https://bsky.app/profile/{}.bsky.social",
-    "urlProbe": "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor={}.bsky.social",
+    "urlProbe": "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle={}.bsky.social",
     "urlMain": "https://bsky.app/",
     "username_claimed": "mcuban"
   },
@@ -310,7 +305,7 @@
     "username_claimed": "blue"
   },
   "BongaCams": {
-    "errorType": "status_code",
+    "errorType": "response_url",
     "isNSFW": true,
     "url": "https://pt.bongacams.com/profile/{}",
     "urlMain": "https://pt.bongacams.com",
@@ -366,6 +361,12 @@
     "urlMain": "https://community.cartalk.com/",
     "username_claimed": "always_fixing"
   },
+  "Cara": {
+    "errorType": "status_code",
+    "url": "https://cara.app/{}/",
+    "urlMain": "https://cara.app/",
+    "username_claimed": "blue"
+  },
   "Carbonmade": {
     "errorType": "response_url",
     "errorUrl": "https://carbonmade.com/fourohfour?domain={}.carbonmade.com",
@@ -373,6 +374,12 @@
     "url": "https://{}.carbonmade.com",
     "urlMain": "https://carbonmade.com/",
     "username_claimed": "jenny"
+  },
+  "Carrd": {
+    "errorType": "status_code",
+    "url": "https://{}.carrd.co/",
+    "urlMain": "https://carrd.co/",
+    "username_claimed": "blue"
   },
   "Career.habr": {
     "errorMsg": "<h1>\u041e\u0448\u0438\u0431\u043a\u0430 404</h1>",
@@ -635,8 +642,10 @@
   },
   "CSSBattle": {
     "errorType": "status_code",
+    "request_method": "POST",
     "url": "https://cssbattle.dev/player/{}",
     "urlMain": "https://cssbattle.dev",
+    "browserOnly": true,
     "username_claimed": "beo"
   },
   "CTAN": {
@@ -668,8 +677,8 @@
     "username_claimed": "blue"
   },
   "Dailykos": {
-    "errorMsg": "{\"result\":true,\"message\":null}",
-    "errorType": "message",
+    "errorType": "status_code",
+    "request_method": "POST",
     "url": "https://www.dailykos.com/user/{}",
     "urlMain": "https://www.dailykos.com",
     "urlProbe": "https://www.dailykos.com/signup/check_nickname?nickname={}",
@@ -677,8 +686,17 @@
   },
   "DailyMotion": {
     "errorType": "status_code",
+    "request_method": "POST",
     "url": "https://www.dailymotion.com/{}",
     "urlMain": "https://www.dailymotion.com/",
+    "username_claimed": "blue"
+  },
+  "Danbooru": {
+    "errorMsg": "No posts found.",
+    "errorType": "message",
+    "request_method": "GET",
+    "url": "https://danbooru.donmai.us/posts?tags={}",
+    "urlMain": "https://danbooru.donmai.us/",
     "username_claimed": "blue"
   },
   "DatingRU": {
@@ -992,7 +1010,6 @@
     "errorType": "status_code",
     "url": "https://www.freecodecamp.org/{}",
     "urlMain": "https://www.freecodecamp.org/",
-    "urlProbe": "https://api.freecodecamp.org/api/users/get-public-profile?username={}",
     "username_claimed": "naveennamani"
   },
   "Freelancer": {
@@ -1450,6 +1467,13 @@
     "urlMain": "https://issuu.com/",
     "username_claimed": "jenny"
   },
+  "Itaku": {
+    "errorType": "status_code",
+    "url": "https://itaku.ee/profile/{}",
+    "urlMain": "https://itaku.ee",
+    "urlProbe": "https://itaku.ee/api/user_profiles/{}/",
+    "username_claimed": "blue"
+  },
   "Itch.io": {
     "errorType": "status_code",
     "regexCheck": "^[\\w@-]+?$",
@@ -1772,7 +1796,6 @@
     "errorType": "status_code",
     "url": "https://www.minds.com/{}/",
     "urlMain": "https://www.minds.com",
-    "urlProbe": "https://www.minds.com/api/v3/register/validate?username={}",
     "username_claimed": "john"
   },
   "Minecraft": {
@@ -1869,8 +1892,7 @@
     "username_claimed": "blue"
   },
   "Mydramalist": {
-    "errorMsg": "Sign in - MyDramaList",
-    "errorType": "message",
+    "errorType": "status_code",
     "url": "https://www.mydramalist.com/profile/{}",
     "urlMain": "https://mydramalist.com",
     "username_claimed": "elhadidy12398"
@@ -2176,6 +2198,14 @@
     "urlMain": "https://discourse.pi-hole.net",
     "username_claimed": "danschaper"
   },
+  "Picarto": {
+    "errorMsg": "s leading live streaming platform for creative minds. Come join us and watch artists from all over the world during their creative process!",
+    "errorType": "message",
+    "url": "https://picarto.tv/{}/",
+    "urlMain": "https://picarto.tv/",
+    "urlProbe": "https://ptvintern.picarto.tv/metadescription/{}",
+    "username_claimed": "blue"
+  },
   "pikabu": {
     "errorType": "status_code",
     "url": "https://pikabu.ru/@{}",
@@ -2447,7 +2477,7 @@
     "username_claimed": "Tatteddick5600"
   },
   "RoyalCams": {
-    "errorType": "status_code",
+    "errorType": "response_url",
     "url": "https://royalcams.com/profile/{}",
     "urlMain": "https://royalcams.com",
     "username_claimed": "asuna-black"
@@ -2492,6 +2522,7 @@
     "errorType": "status_code",
     "url": "https://www.sbazar.cz/{}",
     "urlMain": "https://www.sbazar.cz/",
+    "browserOnly": true,
     "username_claimed": "blue"
   },
   "Scratch": {
@@ -2895,7 +2926,7 @@
     "urlProbe": "https://tryhackme.com/api/user/exist/{}",
     "username_claimed": "ashu"
   },
-  "tumblr": {
+  "Tumblr": {
     "errorType": "status_code",
     "url": "https://{}.tumblr.com/",
     "urlMain": "https://www.tumblr.com/",
@@ -2917,6 +2948,7 @@
   },
   "Tweakers": {
     "errorType": "status_code",
+    "request_method": "POST",
     "url": "https://tweakers.net/gallery/{}",
     "urlMain": "https://tweakers.net",
     "username_claimed": "femme"
@@ -3113,12 +3145,6 @@
     "url": "https://en.wikipedia.org/wiki/Special:CentralAuth/{}?uselang=qqx",
     "urlMain": "https://www.wikipedia.org/",
     "username_claimed": "Hoadlck"
-  },
-  "Windy": {
-    "errorType": "status_code",
-    "url": "https://community.windy.com/user/{}",
-    "urlMain": "https://windy.com/",
-    "username_claimed": "blue"
   },
   "Wix": {
     "errorType": "status_code",

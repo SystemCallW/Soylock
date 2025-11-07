@@ -19,13 +19,16 @@ from json import loads as json_loads
 from time import monotonic
 from typing import Optional
 
-import requests
-from requests_futures.sessions import FuturesSession
+#import requests
+from curl_cffi import requests
+from sessions import FuturesSession
+import asyncio
 
 from __init__ import (
     __longname__,
     __shortname__,
     __version__,
+    forge_api_latest_release,
 )
 
 from result import QueryStatus
@@ -37,7 +40,7 @@ from colorama import init
 from argparse import ArgumentTypeError
 
 class SoylockFuturesSession(FuturesSession):
-    def request(self, method, url, hooks=None, *args, **kwargs):
+    def request(self, method, url, *args, **kwargs):
         """Request URL.
 
         This extends the FuturesSession request method to calculate a response
@@ -50,64 +53,26 @@ class SoylockFuturesSession(FuturesSession):
         self                   -- This object.
         method                 -- String containing method desired for request.
         url                    -- String containing URL for request.
-        hooks                  -- Dictionary containing hooks to execute after
-                                  request finishes.
         args                   -- Arguments.
         kwargs                 -- Keyword arguments.
 
         Return Value:
         Request object.
         """
-        # Record the start time for the request.
-        if hooks is None:
-            hooks = {}
-        start = monotonic()
-
-        def response_time(resp, *args, **kwargs):
-            """Response Time Hook.
-
-            Keyword Arguments:
-            resp                   -- Response object.
-            args                   -- Arguments.
-            kwargs                 -- Keyword arguments.
-
-            Return Value:
-            Nothing.
-            """
-            resp.elapsed = monotonic() - start
-
-            return
-
-        # Install hook to execute when response completes.
-        # Make sure that the time measurement hook is first, so we will not
-        # track any later hook's execution time.
-        try:
-            if isinstance(hooks["response"], list):
-                hooks["response"].insert(0, response_time)
-            elif isinstance(hooks["response"], tuple):
-                # Convert tuple to list and insert time measurement hook first.
-                hooks["response"] = list(hooks["response"])
-                hooks["response"].insert(0, response_time)
-            else:
-                # Must have previously contained a single hook function,
-                # so convert to list.
-                hooks["response"] = [response_time, hooks["response"]]
-        except KeyError:
-            # No response hook was already defined, so install it ourselves.
-            hooks["response"] = [response_time]
 
         return super(SoylockFuturesSession, self).request(
-            method, url, hooks=hooks, *args, **kwargs
+            method, url, *args, **kwargs
         )
 
-def get_response(request_future, error_type, social_network):
+async def get_response(request_future, error_type, social_network):
     # Default for Response object if some failure occurs.
     response = None
 
     error_context = "General Unknown Error"
     exception_text = None
     try:
-        response = request_future.result()
+        response = await request_future
+
         if response.status_code:
             # Status code exists in response object
             error_context = None
@@ -152,12 +117,10 @@ def multiple_usernames(username):
         allUsernames.append(username.replace("{?}", i))
     return allUsernames
 
-def soylock(
+async def soylock(
     username: str,
     site_data: dict,
     query_notify: QueryNotify,
-    tor: bool = False,
-    unique_tor: bool = False,
     dump_response: bool = False,
     proxy: Optional[str] = None,
     timeout: int = 60,
@@ -173,8 +136,6 @@ def soylock(
     query_notify           -- Object with base type of QueryNotify().
                               This will be used to notify the caller about
                               query results.
-    tor                    -- Boolean indicating whether to use a tor circuit for the requests.
-    unique_tor             -- Boolean indicating whether to use a new tor circuit for each request.
     proxy                  -- String indicating the proxy URL
     timeout                -- Time in seconds to wait before timing out request.
                               Default is 60 seconds.
@@ -195,32 +156,7 @@ def soylock(
 
     # Notify caller that we are starting the query.
     query_notify.start(username)
-    # Create session based on request methodology
-    if tor or unique_tor:
-        try:
-            from torrequest import TorRequest  # noqa: E402
-        except ImportError:
-            print("Important!")
-            print("> --tor and --unique-tor are now DEPRECATED, and may be removed in a future release of Soylock.")
-            print("> If you've installed Soylock via pip, you can include the optional dependency via `pip install 'sherlock-project[tor]'`.")
-            print("> Other packages should refer to their documentation, or install it separately with `pip install torrequest`.\n")
-            sys.exit(query_notify.finish())
-
-        print("Important!")
-        print("> --tor and --unique-tor are now DEPRECATED, and may be removed in a future release of Soylock.")
-
-        # Requests using Tor obfuscation
-        try:
-            underlying_request = TorRequest()
-        except OSError:
-            print("Tor not found in system path. Unable to continue.\n")
-            sys.exit(query_notify.finish())
-
-        underlying_session = underlying_request.session
-    else:
-        # Normal requests
-        underlying_session = requests.session()
-        underlying_request = requests.Request()
+    underlying_session = requests.AsyncSession()
 
     # Limit number of workers to 20.
     # This is probably vastly overkill.
@@ -231,7 +167,7 @@ def soylock(
 
     # Create multi-threaded session for all requests.
     session = SoylockFuturesSession(
-        max_workers=max_workers, session=underlying_session
+        session=underlying_session
     )
 
     # Results from analysis of all sites
@@ -263,6 +199,15 @@ def soylock(
             # No need to do the check at the site: this username is not allowed.
             results_site["status"] = QueryResult(
                 username, social_network, url, QueryStatus.ILLEGAL
+            )
+            results_site["url_user"] = ""
+            results_site["http_status"] = ""
+            results_site["response_text"] = ""
+            query_notify.update(results_site["status"])
+        elif net_info.get("browserOnly"):
+            # Soon to be implemented
+            results_site["status"] = QueryResult(
+                username, social_network, url, QueryStatus.UNIMPLEMENTED
             )
             results_site["url_user"] = ""
             results_site["http_status"] = ""
@@ -304,7 +249,7 @@ def soylock(
                     # In most cases when we are detecting by status code,
                     # it is not necessary to get the entire body:  we can
                     # detect fine with just the HEAD response.
-                    request = session.head
+                    request = session.get
                 else:
                     # Either this detect method needs the content associated
                     # with the GET response, or this specific website will
@@ -331,6 +276,7 @@ def soylock(
                     allow_redirects=allow_redirects,
                     timeout=timeout,
                     json=request_payload,
+                    impersonate="chrome",
                 )
             else:
                 future = request(
@@ -339,14 +285,11 @@ def soylock(
                     allow_redirects=allow_redirects,
                     timeout=timeout,
                     json=request_payload,
+                    impersonate="chrome",
                 )
 
             # Store future in data for access later
             net_info["request_future"] = future
-
-            # Reset identify for tor (if needed)
-            if unique_tor:
-                underlying_request.reset_identity()
 
         # Add this site's results into final dictionary with all the other results.
         results_total[social_network] = results_site
@@ -369,7 +312,7 @@ def soylock(
 
         # Retrieve future and ensure it has finished
         future = net_info["request_future"]
-        r, error_text, exception_text = get_response(
+        r, error_text, exception_text = await get_response(
             request_future=future, error_type=error_type, social_network=social_network
         )
 
@@ -401,7 +344,8 @@ def soylock(
             r'.loading-spinner{visibility:hidden}body.no-js .challenge-running{display:none}body.dark{background-color:#222;color:#d9d9d9}body.dark a{color:#fff}body.dark a:hover{color:#ee730a;text-decoration:underline}body.dark .lds-ring div{border-color:#999 transparent transparent}body.dark .font-red{color:#b20f03}body.dark', # 2024-05-13 Cloudflare
             r'<span id="challenge-error-text">', # 2024-11-11 Cloudflare error page
             r'AwsWafIntegration.forceRefreshToken', # 2024-11-11 Cloudfront (AWS)
-            r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:' # 2024-04-09 PerimeterX / Human Security
+            r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:', # 2024-04-09 PerimeterX / Human Security
+            'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re' # 2025-11-07 Reddit
         ]
 
         if error_text is not None:
@@ -545,7 +489,7 @@ def handler(signal_received, frame):
     """
     sys.exit(0)
 
-def main():
+async def main():
     parser = ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter,
         description=f"{__longname__} (Version {__version__})",
@@ -577,22 +521,6 @@ def main():
         "-o",
         dest="output",
         help="If using single username, the output of the result will be saved to this file.",
-    )
-    parser.add_argument(
-        "--tor",
-        "-t",
-        action="store_true",
-        dest="tor",
-        default=False,
-        help="Make requests over Tor; increases runtime; requires Tor to be installed and in system path.",
-    )
-    parser.add_argument(
-        "--unique-tor",
-        "-u",
-        action="store_true",
-        dest="unique_tor",
-        default=False,
-        help="Make requests over Tor with new Tor circuit after each request; increases runtime; requires Tor to be installed and in system path.",
     )
     parser.add_argument(
         "--csv",
@@ -702,6 +630,13 @@ def main():
     )
 
     parser.add_argument(
+        "--browser-mode",
+        action="store_true",
+        default=False,
+        help="Soon to be implemented",
+    )
+
+    parser.add_argument(
         "--txt",
         action="store_true",
         dest="output_txt",
@@ -715,21 +650,9 @@ def main():
     # If the user presses CTRL-C, exit gracefully without throwing errors
     signal.signal(signal.SIGINT, handler)
 
-    # Argument check
-    # TODO regex check on args.proxy
-    if args.tor and (args.proxy is not None):
-        raise Exception("Tor and Proxy cannot be set at the same time.")
-
     # Make prompts
     if args.proxy is not None:
         print("Using the proxy: " + args.proxy)
-
-    if args.tor or args.unique_tor:
-        print("Using Tor to make requests")
-
-        print(
-            "Warning: some websites might refuse connecting over Tor, so note that using this option might increase connection errors."
-        )
 
     if args.no_color:
         # Disable color output.
@@ -815,6 +738,19 @@ def main():
         result=None, verbose=args.verbose, print_all=args.print_all, browse=args.browse
     )
 
+    query_notify.splash()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+    }
+
+    r = requests.get(forge_api_latest_release, headers=headers)
+    if r.status_code == 200:
+        data = r.json()
+        tag = data.get("tag_name")
+        if tag != "v" +__version__:
+            query_notify.versionAlert(tag)
+
     # Run report on all specified users.
     all_usernames = []
     for username in args.username:
@@ -824,12 +760,10 @@ def main():
         else:
             all_usernames.append(username)
     for username in all_usernames:
-        results = soylock(
+        results = await soylock(
             username,
             site_data,
             query_notify,
-            tor=args.tor,
-            unique_tor=args.unique_tor,
             dump_response=args.dump_response,
             proxy=args.proxy,
             timeout=args.timeout,
@@ -943,4 +877,4 @@ def main():
     query_notify.finish()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

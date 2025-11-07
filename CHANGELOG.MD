@@ -1,21 +1,36 @@
 Changes: 0.16.4 (beta)
 Added:
+- New requests implementation
+sites:
+- Cara
+- Carrd
 - Chollometro
+- Danbooru
 - HotUKdeals
+- Itaku
 - Mydealz
 - Pepperdeals
 - PepperealsUS
 - PepperNL
 - PepperPL
+- Picarto
 - Preisjaeger
 - Promodescuentos
 
 Fixed:
 - AllMyLinks
+- APClips
+- ArtStation
+- BongaCams
+- Bluesky
 - Chess
 - CNET
+- Dailykos
+- Freecodecamp
 - hunting
 - phpRU
+- Mydramalist
+- RoyalCams
 - Snapchat
 - Tuna
 - Twitter
@@ -23,7 +38,9 @@ Fixed:
 
 Removed:
 - Archive.org
+- AuthorSTREAM
 - ResearchGate
+- Windy
 
 Changes: 0.16.3 (beta)
 Added:

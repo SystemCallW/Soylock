@@ -11,7 +11,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/SystemCallW/Soylock/master/res
 
 class SiteInformation:
     def __init__(self, name, url_home, url_username_format, username_claimed,
-                information, is_nsfw, username_unclaimed=secrets.token_urlsafe(10)):
+                information, is_nsfw, browser_only, username_unclaimed=secrets.token_urlsafe(10)):
         """Create Site Information Object.
 
         Contains information about a specific website.
@@ -44,6 +44,7 @@ class SiteInformation:
                                          but it is only recorded in this
                                          object for future use.
         is_nsfw                -- Boolean indicating if site is Not Safe For Work.
+        browser_only           -- Boolean incicating if site is Broswer Mode only.
 
         Return Value:
         Nothing.
@@ -57,6 +58,7 @@ class SiteInformation:
         self.username_unclaimed = secrets.token_urlsafe(32)
         self.information = information
         self.is_nsfw  = is_nsfw
+        self.browser_only = browser_only
 
         return
 
@@ -170,7 +172,8 @@ class SitesInformation:
                                     site_data[site_name]["url"],
                                     site_data[site_name]["username_claimed"],
                                     site_data[site_name],
-                                    site_data[site_name].get("isNSFW",False)
+                                    site_data[site_name].get("isNSFW",False),
+                                    site_data[site_name].get("browserOnly",False)
 
                                     )
             except KeyError as error:
