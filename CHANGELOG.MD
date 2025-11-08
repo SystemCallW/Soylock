@@ -2,6 +2,7 @@ Changes: 0.16.4 (beta)
 Added:
 - New requests implementation
 sites:
+. BeatLeader
 - Cara
 - Carrd
 - Chollometro
@@ -16,6 +17,7 @@ sites:
 - Picarto
 - Preisjaeger
 - Promodescuentos
+- Steam Community (Search)
 
 Fixed:
 - AllMyLinks
@@ -28,7 +30,6 @@ Fixed:
 - Dailykos
 - Freecodecamp
 - hunting
-- Paypal
 - phpRU
 - Mydramalist
 - RoyalCams
