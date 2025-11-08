@@ -2436,13 +2436,14 @@
     "username_claimed": "blue"
   },
   "Reddit": {
-    "errorMsg": "Sorry, nobody on Reddit goes by that name.",
+    "errorMsg": "the page you requested does not exist",
     "errorType": "message",
     "headers": {
       "accept-language": "en-US,en;q=0.9"
     },
-    "url": "https://www.reddit.com/user/{}",
+    "url": "https://reddit.com/user/{}",
     "urlMain": "https://www.reddit.com/",
+    "urlProbe": "https://old.reddit.com/user/{}",
     "username_claimed": "blue"
   },
   "Realmeye": {

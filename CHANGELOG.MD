@@ -1,6 +1,7 @@
 Changes: 0.16.4 (beta)
 Added:
 - New requests implementation
+- Better WAF detection
 sites:
 . BeatLeader
 - Cara

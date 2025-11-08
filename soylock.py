@@ -355,30 +355,47 @@ async def soylock(
             query_status = QueryStatus.WAF
 
         elif error_type == "message":
-            # error_flag True denotes no error found in the HTML
-            # error_flag False denotes error found in the HTML
-            error_flag = True
-            errors = net_info.get("errorMsg")
-            # errors will hold the error message
-            # it can be string or list
-            # by isinstance method we can detect that
-            # and handle the case for strings as normal procedure
-            # and if its list we can iterate the errors
-            if isinstance(errors, str):
-                # Checks if the error message is in the HTML
-                # if error is present we will set flag to False
-                if errors in r.text:
-                    error_flag = False
+            # If the server returns a blocking or error status (common when a
+            # WAF or similar is in front of the site), treat it as WAF so we
+            # don't incorrectly return CLAIMED just because the response body
+            # doesn't include the configured error message.
+            #
+            # This addresses cases like Giphy where both existing and
+            # non-existing pages can return 403 and an empty body.
+            try:
+                status_code_val = int(http_status)
+            except Exception:
+                status_code_val = None
+
+            if status_code_val in (403, 429, 503):
+                # Common codes indicating blocking / rate limiting / service unavailable.
+                # Mark as WAF so the caller knows the probe couldn't determine existence.
+                query_status = QueryStatus.WAF
             else:
-                # If it's list, it will iterate all the error message
-                for error in errors:
-                    if error in r.text:
+                # error_flag True denotes no error found in the HTML
+                # error_flag False denotes error found in the HTML
+                error_flag = True
+                errors = net_info.get("errorMsg")
+                # errors will hold the error message
+                # it can be string or list
+                # by isinstance method we can detect that
+                # and handle the case for strings as normal procedure
+                # and if its list we can iterate the errors
+                if isinstance(errors, str):
+                    # Checks if the error message is in the HTML
+                    # if error is present we will set flag to False
+                    if errors in r.text:
                         error_flag = False
-                        break
-            if error_flag:
-                query_status = QueryStatus.CLAIMED
-            else:
-                query_status = QueryStatus.AVAILABLE
+                else:
+                    # If it's list, it will iterate all the error message
+                    for error in errors:
+                        if error in r.text:
+                            error_flag = False
+                            break
+                if error_flag:
+                    query_status = QueryStatus.CLAIMED
+                else:
+                    query_status = QueryStatus.AVAILABLE
         elif error_type == "status_code":
             error_codes = net_info.get("errorCode")
             query_status = QueryStatus.CLAIMED
@@ -389,6 +406,8 @@ async def soylock(
 
             if error_codes is not None and r.status_code in error_codes:
                 query_status = QueryStatus.AVAILABLE
+            elif r.status_code in (403, 429, 503):
+                query_status = QueryStatus.WAF
             elif r.status_code >= 300 or r.status_code < 200:
                 query_status = QueryStatus.AVAILABLE
         elif error_type == "response_url":
@@ -399,6 +418,8 @@ async def soylock(
             # forward to some odd redirect).
             if 200 <= r.status_code < 300:
                 query_status = QueryStatus.CLAIMED
+            elif r.status_code in (403, 429, 503):
+                query_status = QueryStatus.WAF
             else:
                 query_status = QueryStatus.AVAILABLE
         else:
