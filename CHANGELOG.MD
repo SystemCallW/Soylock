@@ -28,11 +28,13 @@ Fixed:
 - Dailykos
 - Freecodecamp
 - hunting
+- Paypal
 - phpRU
 - Mydramalist
 - RoyalCams
 - Snapchat
 - Tuna
+- Twitch
 - Twitter
 - Unsplash
 
