@@ -10,12 +10,13 @@ class QueryStatus(Enum):
 
     Describes status of query about a given username.
     """
-    CLAIMED   = "Claimed"   # Username Detected
-    AVAILABLE = "Available" # Username Not Detected
-    UNKNOWN   = "Unknown"   # Error Occurred While Trying To Detect Username
-    ILLEGAL   = "Illegal"   # Username Not Allowable For This Site
-    WAF       = "WAF"       # Request blocked by WAF (i.e. Cloudflare)
-    UNIMPLEMENTED = "Unimplemented"
+    CLAIMED       = "Claimed"       # Username Detected
+    AVAILABLE     = "Available"     # Username Not Detected
+    UNKNOWN       = "Unknown"       # Error Occurred While Trying To Detect Username
+    ILLEGAL       = "Illegal"       # Username Not Allowable For This Site
+    WAF           = "WAF"           # Request blocked by WAF (i.e. Cloudflare)
+    UNIMPLEMENTED = "Unimplemented" # This site requires unimplemented method
+    BLOCKED       = "Blocked"       # Request blocked by country
 
     def __str__(self):
         """Convert Object To String.

@@ -184,6 +184,7 @@ async def soylock(
         # information since they think that we are bots (Which we actually are...)
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+            "accept-language": "en-US,en;q=0.6"
         }
 
         if "headers" in net_info:
@@ -245,16 +246,7 @@ async def soylock(
                 url_probe = interpolate_string(url_probe, username)
 
             if request is None:
-                if net_info["errorType"] == "status_code":
-                    # In most cases when we are detecting by status code,
-                    # it is not necessary to get the entire body:  we can
-                    # detect fine with just the HEAD response.
-                    request = session.get
-                else:
-                    # Either this detect method needs the content associated
-                    # with the GET response, or this specific website will
-                    # not respond properly unless we request the whole page.
-                    request = session.get
+                request = session.get
 
             if net_info["errorType"] == "response_url":
                 # Site forwards request to a different URL if username not
@@ -348,11 +340,20 @@ async def soylock(
             'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re' # 2025-11-07 Reddit
         ]
 
+        RegulationHitMsgs = [
+            '<link rel="stylesheet" href="/dist/age-wall.min.', # 2025-11-11 Pornhub / YouPorn / RedTube
+            'Although this platform is, and has always been, for adults only, as it appears you are accessing the platform from', # 2025-11-11 ChaturBate
+            'We comply with laws across 19 states that mandate content controls and age verification measures.' # 2025-11-11 RocketTube
+        ]
+
         if error_text is not None:
             error_context = error_text
 
         elif any(hitMsg in r.text for hitMsg in WAFHitMsgs):
             query_status = QueryStatus.WAF
+
+        elif any(hitMsg in r.text for hitMsg in RegulationHitMsgs):
+            query_status = QueryStatus.BLOCKED
 
         elif error_type == "message":
             # If the server returns a blocking or error status (common when a

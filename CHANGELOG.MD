@@ -2,6 +2,8 @@ Changes: 0.16.4 (beta)
 Added:
 - New requests implementation
 - Better WAF detection
+- Country block detection
+- Fail count print
 sites:
 - BeatLeader
 - Cara

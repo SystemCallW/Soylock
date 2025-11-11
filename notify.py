@@ -9,6 +9,8 @@ import webbrowser
 
 # Global variable to count the number of results.
 globvar = 0
+wafvar = 0
+blockedvar = 0
 
 from __init__ import (
     __version__,
@@ -206,6 +208,34 @@ class QueryNotifyPrint(QueryNotify):
         globvar += 1
         return globvar
 
+    def countWAF(self):
+        """This function counts the number of WAF. Every time the function is called,
+        the number of results is increasing.
+
+        Keyword Arguments:
+        self                   -- This object.
+
+        Return Value:
+        The number of WAF by the time we call the function.
+        """
+        global wafvar
+        wafvar += 1
+        return wafvar
+
+    def countBlocked(self):
+        """This function counts the number of blocked. Every time the function is called,
+        the number of results is increasing.
+
+        Keyword Arguments:
+        self                   -- This object.
+
+        Return Value:
+        The number of blocked by the time we call the function.
+        """
+        global blockedvar
+        blockedvar += 1
+        return blockedvar
+
     def update(self, result):
         """Notify Update.
 
@@ -267,6 +297,7 @@ class QueryNotifyPrint(QueryNotify):
                       Fore.YELLOW + f" {msg}")
                 
         elif result.status == QueryStatus.WAF:
+            self.countWAF()
             if self.print_all:
                 print(Style.BRIGHT + Fore.WHITE + "[" +
                       Fore.RED + "-" +
@@ -281,6 +312,15 @@ class QueryNotifyPrint(QueryNotify):
                       Fore.WHITE + "]" +
                       Fore.GREEN + f" {self.result.site_name}:" +
                       Fore.RED + " This site requires Browser Mode (unimplemented)")
+        elif result.status == QueryStatus.BLOCKED:
+            self.countBlocked()
+            if self.print_all:
+                print(Style.BRIGHT + Fore.WHITE + "[" +
+                      Fore.RED + "-" +
+                      Fore.WHITE + "]" +
+                      Fore.GREEN + f" {self.result.site_name}:" +
+                      Fore.RED + " Blocked by your country" +
+                      Fore.YELLOW + " (proxy may help)")
 
         else:
             # It should be impossible to ever get here...
@@ -300,6 +340,8 @@ class QueryNotifyPrint(QueryNotify):
         Nothing.
         """
         NumberOfResults = self.countResults() - 1
+        NumberOfWAF = self.countWAF() - 1
+        NumberOfBlock = self.countBlocked() - 1
 
         print(Style.BRIGHT + Fore.GREEN + "[" +
               Fore.YELLOW + "*" +
@@ -307,6 +349,20 @@ class QueryNotifyPrint(QueryNotify):
               Fore.WHITE + f" {NumberOfResults} " +
               Fore.GREEN + "results" + Style.RESET_ALL
               )
+        if NumberOfWAF != 0:
+            print(Style.BRIGHT + Fore.WHITE + "[" +
+                  Fore.RED + "-" +
+                  Fore.WHITE + f"] {NumberOfWAF} " +
+                  Fore.RED + "Site got WAF blocked" +
+                  Fore.YELLOW + " (a clean IP may help)" + Style.RESET_ALL
+                  )
+        if NumberOfBlock != 0:
+            print(Style.BRIGHT + Fore.WHITE + "[" +
+                  Fore.RED + "-" +
+                  Fore.WHITE + f"] {NumberOfBlock} " +
+                  Fore.RED + "Site got country blocked"  +
+                  Fore.YELLOW + " (proxy may help)" + Style.RESET_ALL
+                  )
 
     def __str__(self):
         """Convert Object To String.

@@ -1437,7 +1437,10 @@
     "username_claimed": "blue"
   },
   "Instagram": {
-    "errorMsg": "<title>Instagram</title>",
+    "errorMsg": [
+        "<title>Instagram</title>",
+        "<title>Login • Instagram</title>"
+    ],
     "errorType": "message",
     "url": "https://instagram.com/{}",
     "urlMain": "https://instagram.com/",
@@ -1804,7 +1807,11 @@
     "username_claimed": "blue"
   },
   "minds": {
-    "errorType": "status_code",
+    "errorMsg": [
+        "<div class=\"m-app__loadingContainer\" id=\"generic-loading-logo-container",
+        "<meta property=\"og:title\" content=\"Channel | Minds\">"
+    ],
+    "errorType": "message",
     "url": "https://www.minds.com/{}/",
     "urlMain": "https://www.minds.com",
     "username_claimed": "john"
@@ -2139,10 +2146,10 @@
     "username_claimed": "blue"
   },
   "PayPal.me": {
-    "errorMsg": "<meta property=\"og:title\" content=\"Get your very own PayPal.Me link\">",
+    "errorMsg": "meta property=\"og:title\" content=\"Get your very own PayPal.Me link",
     "errorType": "message",
     "headers": {
-      "accept-language": "en-US,en;q=0.9"
+        "Cookie": "LANG=en_US;"
     },
     "url": "https://www.paypal.com/paypalme/{}",
     "urlMain": "https://www.paypal.com/",
@@ -2769,7 +2776,7 @@
     "errorMsg": "search_result_count\":0",
     "errorType": "message",
     "headers": {
-      "Cookie": "sessionid=736f796c6f636b776f6e657a; "
+      "Cookie": "sessionid=736f796c6f636b776f6e657a;"
     },
     "url": "https://steamcommunity.com/search/users/#text={}",
     "urlMain": "https://steamcommunity.com/",
@@ -2967,6 +2974,7 @@
     "errorType": "message",
     "url": "https://trovo.live/s/{}/",
     "urlMain": "https://trovo.live",
+    "browserOnly": true,
     "username_claimed": "Aimilios"
   },
   "Tweakers": {
