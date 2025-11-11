@@ -337,13 +337,17 @@ async def soylock(
             r'<span id="challenge-error-text">', # 2024-11-11 Cloudflare error page
             r'AwsWafIntegration.forceRefreshToken', # 2024-11-11 Cloudfront (AWS)
             r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:', # 2024-04-09 PerimeterX / Human Security
-            'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re' # 2025-11-07 Reddit
+            'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re', # 2025-11-07 Reddit
+            'Please wait while your request is being verified...' # 2025-11-11 OurDJTalk
         ]
 
         RegulationHitMsgs = [
             '<link rel="stylesheet" href="/dist/age-wall.min.', # 2025-11-11 Pornhub / YouPorn / RedTube
             'Although this platform is, and has always been, for adults only, as it appears you are accessing the platform from', # 2025-11-11 ChaturBate
-            'We comply with laws across 19 states that mandate content controls and age verification measures.' # 2025-11-11 RocketTube
+            'We comply with laws across 19 states that mandate content controls and age verification measures.', # 2025-11-11 RocketTube
+            'Broke Straight Boys is the original Gay For Pay site. Watch over 2743 exclusive scenes of real straight boys doing whatever it takes to pay the bills - Highest Rated - Page 1', # 2025-11-11 RocketTube alternative
+            'Visitors from United Kingdom must verify their age to access this site.', # 2025-11-11 BongaCams
+            'To continue, we are required to verify that you are 18 or older, in line with the UK Online Safety Act.' # 2025-11-11 LushStories / Pornhub (A) / YouPorn (A) / RedTube (A)
         ]
 
         if error_text is not None:

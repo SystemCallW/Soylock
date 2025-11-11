@@ -2149,7 +2149,7 @@
     "errorMsg": "meta property=\"og:title\" content=\"Get your very own PayPal.Me link",
     "errorType": "message",
     "headers": {
-        "Cookie": "LANG=en_US;"
+        "Cookie": "LANG=en_US%3BUS;"
     },
     "url": "https://www.paypal.com/paypalme/{}",
     "urlMain": "https://www.paypal.com/",
