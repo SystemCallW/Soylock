@@ -3,7 +3,7 @@ Added:
 - New requests implementation
 - Better WAF detection
 sites:
-. BeatLeader
+- BeatLeader
 - Cara
 - Carrd
 - Chollometro
@@ -31,8 +31,9 @@ Fixed:
 - Dailykos
 - Freecodecamp
 - hunting
-- phpRU
 - Mydramalist
+- Paypal
+- phpRU
 - RoyalCams
 - Snapchat
 - Tuna
