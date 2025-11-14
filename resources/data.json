@@ -1283,7 +1283,7 @@
     "username_claimed": "blue"
   },
   "Harvard Scholar": {
-    "errorType": "status_code",
+    "errorType": "response_url",
     "url": "https://scholar.harvard.edu/{}",
     "urlMain": "https://scholar.harvard.edu/",
     "username_claimed": "ousmanekane"

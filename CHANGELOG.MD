@@ -1,3 +1,7 @@
+Changes: 0.16.5 (beta)
+Fixed:
+- Harvard Scholar
+
 Changes: 0.16.4 (beta)
 Added:
 - New requests implementation
