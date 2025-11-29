@@ -223,14 +223,6 @@
     "urlMain": "https://www.bazar.cz/",
     "username_claimed": "pianina"
   },
-  "BeatLeader": {
-    "errorMsg": "\"data\":[]}",
-    "errorType": "message",
-    "url": "Sorry, due to limitations you have to manually search it up: https://beatleader.com/",
-    "urlMain": "https://beatleader.com/",
-    "urlProbe": "https://api.beatleader.com/players?search={}&leaderboardContext=general&page=1&count=10&sortBy=pp&order=desc",
-    "username_claimed": "blue"
-  },
   "Behance": {
     "errorType": "status_code",
     "url": "https://www.behance.net/{}",
@@ -1064,7 +1056,7 @@
     "username_claimed": "blue"
   },
   "GeeksforGeeks": {
-    "errorType": "status_code",
+    "errorType": "response_url",
     "url": "https://auth.geeksforgeeks.org/user/{}",
     "urlMain": "https://www.geeksforgeeks.org/",
     "username_claimed": "adam"
