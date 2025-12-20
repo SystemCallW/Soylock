@@ -1,0 +1,75 @@
+name: GitHub Badge Update Everyday
+
+on:
+  schedule:
+    - cron: "0 */24 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: gh login
+        run: echo "${{ secrets.SECRET_TOKEN }}" | gh auth login --with-token
+
+      - name: parse latest clone count
+        run: |
+          curl --user "${{ github.actor }}:${{ secrets.SECRET_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/traffic/clones \
+            > clone.json
+
+      - name: parse latest view count
+        run: |
+          curl --user "${{ github.actor }}:${{ secrets.SECRET_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/traffic/views \
+            > view.json
+
+      - name: parse latest site data
+        run: |
+            curl https://raw.githubusercontent.com/SystemCallW/Soylock/refs/heads/main/resources/data.json > data.json
+
+      - name: create gist and download previous data
+        id: set_id
+        run: |
+          if gh secret list | grep -q "GIST_ID"
+          then
+              echo "GIST_ID found"
+              echo "GIST=${{ secrets.GIST_ID }}" >> $GITHUB_OUTPUT
+              curl https://gist.githubusercontent.com/${{ github.actor }}/${{ secrets.GIST_ID }}/raw/data.json > data_before.json
+              if cat data_before.json | grep '404: Not Found'; then
+                echo "GIST_ID not valid anymore. Creating another gist..."
+                gist_id=$(gh gist create data.json | awk -F / '{print $NF}')
+                echo $gist_id | gh secret set GIST_ID
+                echo "GIST=$gist_id" >> $GITHUB_OUTPUT
+              fi
+          else
+              echo "GIST_ID not found. Creating a gist..."
+              gist_id=$(gh gist create data.json | awk -F / '{print $NF}')
+              echo $gist_id | gh secret set GIST_ID
+              echo "GIST=$gist_id" >> $GITHUB_OUTPUT
+          fi
+
+      - name: update script
+        run: |
+          curl https://raw.githubusercontent.com/SystemCallW/github-repository-badges/master/main.py > main.py
+          python3 main.py
+
+      - name: Update gist with latest count
+        run: |
+          content=$(sed -e 's/\\/\\\\/g' -e 's/\t/\\t/g' -e 's/\"/\\"/g' -e 's/\r//g' "data-out.json" | sed -E ':a;N;$!ba;s/\r{0,1}\n/\\n/g')
+          echo '{"description": "${{ github.repository }} statistics", "files": {"data.json": {"content": "'"$content"'"}}}' > post_data.json
+          curl -s -X PATCH \
+            --user "${{ github.actor }}:${{ secrets.SECRET_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @post_data.json https://api.github.com/gists/${{ steps.set_id.outputs.GIST }} > /dev/null 2>&1
+        
+
+      - name: Push
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
