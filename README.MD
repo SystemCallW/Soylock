@@ -7,6 +7,7 @@
 </p>
 I hoped that the project wouldn't end like this, but not everything goes as planned. Due to the constant degradation of the site and lack of raid threads with progress, I decided to move away from sharty indefinitely. If this site somehow improves, I will consider returning, but for the time being, I am going to move to kiwifarms, maybe under the same username. This was inevitable, but don't be sad because likely Soylock will return under a different name.
 
+
 Install:
 pip3 install -r requirements.txt
 
