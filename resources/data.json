@@ -1786,7 +1786,8 @@
     "username_claimed": "blue"
   },
   "mercadolivre": {
-    "errorType": "status_code",
+    "errorMsg": "Parece que esta página não existe",
+    "errorType": "message",
     "url": "https://www.mercadolivre.com.br/perfil/{}",
     "urlMain": "https://www.mercadolivre.com.br",
     "username_claimed": "blue"

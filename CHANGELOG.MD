@@ -1,6 +1,7 @@
 Changes: 0.16.5 (beta)
 Fixed:
 - Harvard Scholar
+- mercadolivre
 
 Removed:
 - Hubski
