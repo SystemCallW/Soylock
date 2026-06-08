@@ -91,23 +91,24 @@ async def get_response(request_future, error_type, social_network):
     try:
         response = await request_future
 
-        if response.status_code:
+        if response is not None and response.status_code is not None:
             # Status code exists in response object
             error_context = None
-    except requests.exceptions.HTTPError as errh:
-        error_context = "HTTP Error"
-        exception_text = str(errh)
-    except requests.exceptions.ProxyError as errp:
-        error_context = "Proxy Error"
-        exception_text = str(errp)
-    except requests.exceptions.ConnectionError as errc:
-        error_context = "Error Connecting"
-        exception_text = str(errc)
-    except requests.exceptions.Timeout as errt:
+    except asyncio.TimeoutError as errt:
         error_context = "Timeout Error"
         exception_text = str(errt)
-    except requests.exceptions.RequestException as err:
-        error_context = "Unknown Error"
+    except Exception as err:
+        err_str = str(err).lower()
+        if "timeout" in err_str:
+            error_context = "Timeout Error"
+        elif "proxy" in err_str:
+            error_context = "Proxy Error"
+        elif "connection" in err_str:
+            error_context = "Error Connecting"
+        elif "http" in err_str:
+            error_context = "HTTP Error"
+        else:
+            error_context = "Unknown Error"
         exception_text = str(err)
 
     return response, error_context, exception_text
@@ -159,8 +160,6 @@ async def soylock(
     query_notify.start(username)
 
     notify_lock = asyncio.Lock()
-
-    # Results from analysis of all sites
     results_total = {}
 
     WAFHitMsgs = [
@@ -506,7 +505,7 @@ async def soylock(
         except Exception:
             http_status = "?"
         try:
-            response_text = r.text.encode(r.encoding or "UTF-8")
+            response_text = r.text
         except Exception:
             response_text = ""
 
@@ -591,7 +590,6 @@ async def soylock(
         pass
 
     return results_total
-
 
 def timeout_check(value):
     """Check Timeout Argument.
