@@ -16,7 +16,6 @@ Fixed:
 - HackThisSite
 - HackenProof
 - Hashnode
-- igromania
 - Inkbunny
 - interpals
 - Laby.net
@@ -25,10 +24,12 @@ Fixed:
 - LushStories
 - Plurk
 - Pokemon Forums
+- PSNProfiles.com
 - Rarible
 - Sketchfab
 - SlideShare
 - SoylentNews
+- Tumblr
 - Twitter
 - VK
 
@@ -36,6 +37,7 @@ Removed:
 - 2Dimensions
 - 9GAG
 - chaos.social
+- ChaturBate
 - CSSBattle
 - EyeEm
 - F3.cool
@@ -43,6 +45,7 @@ Removed:
 - GeeksforGeeks
 - Harvard Scholar
 - IFTTT
+- igromania
 - IRC-Galleria
 - Nextcloud Forum
 - Myspace

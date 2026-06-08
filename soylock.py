@@ -169,6 +169,9 @@ async def soylock(
         r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:',  # 2024-04-09 PerimeterX / Human Security
         'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re',  # 2025-11-07 Reddit
         'Please wait while your request is being verified...',  # 2025-11-11 OurDJTalk
+        'Your request has been blocked due to a network policy.', # 2026-06-08 Reddit
+        '<noscript><p><b>JavaScript is required to access this page.</b></p></noscript>', # 2026-06-08 MusicBrainz
+        '<head><title>415 Unsupported Media Type</title></head>',  # 2026-06-08 OurDJTalk
     ]
 
     RegulationHitMsgs = [
@@ -177,7 +180,10 @@ async def soylock(
         'We comply with laws across 19 states that mandate content controls and age verification measures.',  # 2025-11-11 RocketTube
         'Broke Straight Boys is the original Gay For Pay site. Watch over 2743 exclusive scenes of real straight boys doing whatever it takes to pay the bills - Highest Rated - Page 1',  # 2025-11-11 RocketTube alternative
         'Visitors from United Kingdom must verify their age to access this site.',  # 2025-11-11 BongaCams
-        'To continue, we are required to verify that you are 18 or older, in line with the UK Online Safety Act.'  # 2025-11-11 LushStories / Pornhub (A) / YouPorn (A) / RedTube (A)
+        'To continue, we are required to verify that you are 18 or older, in line with the UK Online Safety Act.',  # 2025-11-11 LushStories / Pornhub (A) / YouPorn (A) / RedTube (A)
+        'https://cdn5.vscdns.com/assets/min/css/age-verification/age-verification', # 2026-06-08 RocketTube
+        'We\'ve had to temporarily block access to the APClips preview area from your state.', # 2026-06-08 APClips
+        'Youporn is not currently accepting new account registrations in your region' # 2026-06-08 Youporn
     ]
 
     def _eval_status(text_for_check, http_status, url_for_check, error_type, net_info, error_context, social_network):
@@ -197,9 +203,6 @@ async def soylock(
             except Exception:
                 status_code_val = None
 
-            #if status_code_val in (403, 429, 503):
-            #    return QueryStatus.WAF, None
-
             error_flag = True
             errors = net_info.get("errorMsg")
             if isinstance(errors, str):
@@ -210,6 +213,11 @@ async def soylock(
                     if error in text_for_check:
                         error_flag = False
                         break
+            if not error_flag:
+                if status_code_val in (403, 429, 503):
+                    return QueryStatus.WAF, None
+                elif status_code_val in (0, 500):
+                    return QueryStatus.UNKNOWN, None
             if error_flag:
                 return QueryStatus.CLAIMED, None
             else:
@@ -224,6 +232,8 @@ async def soylock(
                 return QueryStatus.AVAILABLE, None
             elif http_status in (403, 429, 503):
                 return QueryStatus.WAF, None
+            elif http_status in (0, 500):
+                return QueryStatus.UNKNOWN, None
             elif isinstance(http_status, int) and (http_status >= 300 or http_status < 200):
                 return QueryStatus.AVAILABLE, None
             elif http_status in (None, "?"):
@@ -245,6 +255,8 @@ async def soylock(
 
             if http_status in (403, 429, 503):
                 return QueryStatus.WAF, None
+            elif http_status in (0, 500):
+                return QueryStatus.UNKNOWN, None
             elif isinstance(http_status, int) and 200 <= http_status < 300:
                 return QueryStatus.CLAIMED, None
             elif isinstance(http_status, int) and 300 <= http_status < 400:

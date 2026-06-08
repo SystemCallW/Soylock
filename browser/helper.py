@@ -128,6 +128,8 @@ async def is_challenge_present(page: Page) -> bool:
             or 'Enable JavaScript and cookies to continue' in content
             or 'This requires JavaScript. Enable JavaScript and then reload the page.' in content
             or 'This may be caused by certain browser extensions, such as ad blockers, or by connecting through a VPN or proxy.' in content
+            or 'Please wait while your request is being verified...' in content
+            or '<img class="loading-img" src="/pre-loading.png">' in content
             or 'Please enable JavaScript to continue.' in content
             or 'Verifying your browser, please wait' in content
             or 'Checking your browser' in content
