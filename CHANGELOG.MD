@@ -1,5 +1,9 @@
 Changes: 0.17.0 (beta)
 Added:
+- curseforge
+- intensedebate
+- guns.lol
+- toyhou
 - VoxelShop
 
 Fixed:
@@ -11,6 +15,7 @@ Fixed:
 - Chess
 - Codolio
 - eGPU
+- fandom
 - Football
 - Gravatar
 - HackThisSite
