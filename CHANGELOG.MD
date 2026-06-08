@@ -1,6 +1,68 @@
+Changes: 0.17.0 (beta)
+Added:
+- VoxelShop
+
+Fixed:
+- 1337x
+- APClips
+- AppleDiscussions
+- ArtStation
+- Carbonmade
+- Chess
+- Codolio
+- eGPU
+- Football
+- Gravatar
+- HackThisSite
+- HackenProof
+- Hashnode
+- igromania
+- Inkbunny
+- interpals
+- Laby.net
+- LessWrong
+- Listed
+- LushStories
+- Plurk
+- Pokemon Forums
+- Rarible
+- Sketchfab
+- SlideShare
+- SoylentNews
+- Twitter
+- VK
+
+Removed:
+- 2Dimensions
+- 9GAG
+- chaos.social
+- CSSBattle
+- EyeEm
+- F3.cool
+- forum_guns
+- GeeksforGeeks
+- Harvard Scholar
+- IFTTT
+- IRC-Galleria
+- Nextcloud Forum
+- Myspace
+- opennet.ru
+- Packagist
+- phpRU
+- Polymart
+- prog.hu
+- Replit.com
+- satsisRU
+- sbazar.cz
+- Shutterstock
+- Strava
+- Topcoder
+- Trakt
+- TryHackMe
+- Velomania
+
 Changes: 0.16.5 (beta)
 Fixed:
-- Harvard Scholar
 - mercadolivre
 
 Removed:

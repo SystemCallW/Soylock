@@ -1,4 +1,6 @@
 pandas
 colorama
 requests
-curl_cffi
+tls_client
+playwright==1.57.0
+cloverlabs-camoufox

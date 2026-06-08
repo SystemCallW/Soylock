@@ -11,18 +11,18 @@ import sys
 
 import csv
 import signal
+import json
 import pandas as pd
 import os
 import re
+import tls_client
+import asyncio
+import requests
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from json import loads as json_loads
-from time import monotonic
 from typing import Optional
 
-#import requests
-from curl_cffi import requests
-from sessions import FuturesSession
-import asyncio
+from browser.client import BrowserEngine, BrowserSession
 
 from __init__ import (
     __longname__,
@@ -39,30 +39,48 @@ from sites import SitesInformation
 from colorama import init
 from argparse import ArgumentTypeError
 
-class SoylockFuturesSession(FuturesSession):
-    def request(self, method, url, *args, **kwargs):
-        """Request URL.
+async def _request_in_thread(
+    method: str,
+    url: str,
+    headers: dict,
+    proxy: Optional[str],
+    allow_redirects: bool,
+    timeout: int,
+    json_payload=None,
+):
+    """Execute a synchronous tls-client request in an asyncio thread pool."""
 
-        This extends the FuturesSession request method to calculate a response
-        time metric to each request.
-
-        It is taken (almost) directly from the following Stack Overflow answer:
-        https://github.com/ross/requests-futures#working-in-the-background
-
-        Keyword Arguments:
-        self                   -- This object.
-        method                 -- String containing method desired for request.
-        url                    -- String containing URL for request.
-        args                   -- Arguments.
-        kwargs                 -- Keyword arguments.
-
-        Return Value:
-        Request object.
-        """
-
-        return super(SoylockFuturesSession, self).request(
-            method, url, *args, **kwargs
+    def _do_request():
+        session = tls_client.Session(
+            client_identifier="chrome_138",
+            random_tls_extension_order=True
         )
+        kwargs = {
+            "headers": headers,
+            "allow_redirects": allow_redirects,
+            "timeout_seconds": timeout
+        }
+        if proxy:
+            kwargs["proxy"] = proxy
+        if json_payload is not None:
+            kwargs["json"] = json_payload
+
+        if method == "GET":
+            return session.get(url, **kwargs)
+        elif method == "HEAD":
+            return session.head(url, **kwargs)
+        elif method == "POST":
+            return session.post(url, **kwargs)
+        elif method == "PUT":
+            return session.put(url, **kwargs)
+        else:
+            raise RuntimeError(f"Unsupported request_method for {url}")
+
+    loop = asyncio.get_running_loop()
+    return await asyncio.wait_for(
+        loop.run_in_executor(None, _do_request),
+        timeout=timeout + 15,
+    )
 
 async def get_response(request_future, error_type, social_network):
     # Default for Response object if some failure occurs.
@@ -121,6 +139,7 @@ async def soylock(
     username: str,
     site_data: dict,
     query_notify: QueryNotify,
+    session: Optional[BrowserSession] = None,
     dump_response: bool = False,
     proxy: Optional[str] = None,
     timeout: int = 60,
@@ -129,53 +148,221 @@ async def soylock(
 
     Checks for existence of username on various social media sites.
 
-    Keyword Arguments:
-    username               -- String indicating username that report
-                              should be created against.
-    site_data              -- Dictionary containing all of the site data.
-    query_notify           -- Object with base type of QueryNotify().
-                              This will be used to notify the caller about
-                              query results.
-    proxy                  -- String indicating the proxy URL
-    timeout                -- Time in seconds to wait before timing out request.
-                              Default is 60 seconds.
-
-    Return Value:
-    Dictionary containing results from report. Key of dictionary is the name
-    of the social network site, and the value is another dictionary with
-    the following keys:
-        url_main:      URL of main site.
-        url_user:      URL of user on site (if account exists).
-        status:        QueryResult() object indicating results of test for
-                       account existence.
-        http_status:   HTTP status code of query which checked for existence on
-                       site.
-        response_text: Text that came back from request.  May be None if
-                       there was an HTTP error when checking for existence.
+    * HTTP is the default probe for every site.
+    * If ``session`` is provided (browser mode):
+        – Sites tagged ``browserOnly`` go straight to BrowserSession.
+        – Any site that returns WAF/BLOCKED on the HTTP path is retried
+          through BrowserSession.
+    * All sites are processed concurrently; a result is recorded as soon
+      as its individual probe finishes.
     """
-
-    # Notify caller that we are starting the query.
     query_notify.start(username)
-    underlying_session = requests.AsyncSession()
 
-    # Limit number of workers to 20.
-    # This is probably vastly overkill.
-    if len(site_data) >= 20:
-        max_workers = 20
-    else:
-        max_workers = len(site_data)
-
-    # Create multi-threaded session for all requests.
-    session = SoylockFuturesSession(
-        session=underlying_session
-    )
+    notify_lock = asyncio.Lock()
 
     # Results from analysis of all sites
     results_total = {}
 
-    # First create futures for all requests. This allows for the requests to run in parallel
-    for social_network, net_info in site_data.items():
-        # Results from analysis of this specific site
+    WAFHitMsgs = [
+        r'.loading-spinner{visibility:hidden}body.no-js .challenge-running{display:none}body.dark{background-color:#222;color:#d9d9d9}body.dark a{color:#fff}body.dark a:hover{color:#ee730a;text-decoration:underline}body.dark .lds-ring div{border-color:#999 transparent transparent}body.dark .font-red{color:#b20f03}body.dark',  # 2024-05-13 Cloudflare
+        r'<span id="challenge-error-text">',  # 2024-11-11 Cloudflare error page
+        r'AwsWafIntegration.forceRefreshToken',  # 2024-11-11 Cloudfront (AWS)
+        r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:',  # 2024-04-09 PerimeterX / Human Security
+        'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re',  # 2025-11-07 Reddit
+        'Please wait while your request is being verified...',  # 2025-11-11 OurDJTalk
+    ]
+
+    RegulationHitMsgs = [
+        '<link rel="stylesheet" href="/dist/age-wall.min.',  # 2025-11-11 Pornhub / YouPorn / RedTube
+        'Although this platform is, and has always been, for adults only, as it appears you are accessing the platform from',  # 2025-11-11 ChaturBate
+        'We comply with laws across 19 states that mandate content controls and age verification measures.',  # 2025-11-11 RocketTube
+        'Broke Straight Boys is the original Gay For Pay site. Watch over 2743 exclusive scenes of real straight boys doing whatever it takes to pay the bills - Highest Rated - Page 1',  # 2025-11-11 RocketTube alternative
+        'Visitors from United Kingdom must verify their age to access this site.',  # 2025-11-11 BongaCams
+        'To continue, we are required to verify that you are 18 or older, in line with the UK Online Safety Act.'  # 2025-11-11 LushStories / Pornhub (A) / YouPorn (A) / RedTube (A)
+    ]
+
+    def _eval_status(text_for_check, http_status, url_for_check, error_type, net_info, error_context, social_network):
+        """Determine QueryStatus from response text/status."""
+        if error_context is not None:
+            return QueryStatus.UNKNOWN, error_context
+
+        if any(hitMsg in text_for_check for hitMsg in WAFHitMsgs):
+            return QueryStatus.WAF, None
+
+        if any(hitMsg in text_for_check for hitMsg in RegulationHitMsgs):
+            return QueryStatus.BLOCKED, None
+
+        if error_type == "message":
+            try:
+                status_code_val = int(http_status) if http_status not in (None, "?") else None
+            except Exception:
+                status_code_val = None
+
+            #if status_code_val in (403, 429, 503):
+            #    return QueryStatus.WAF, None
+
+            error_flag = True
+            errors = net_info.get("errorMsg")
+            if isinstance(errors, str):
+                if errors in text_for_check:
+                    error_flag = False
+            else:
+                for error in errors:
+                    if error in text_for_check:
+                        error_flag = False
+                        break
+            if error_flag:
+                return QueryStatus.CLAIMED, None
+            else:
+                return QueryStatus.AVAILABLE, None
+
+        elif error_type == "status_code":
+            error_codes = net_info.get("errorCode")
+            if isinstance(error_codes, int):
+                error_codes = [error_codes]
+
+            if error_codes is not None and http_status in error_codes:
+                return QueryStatus.AVAILABLE, None
+            elif http_status in (403, 429, 503):
+                return QueryStatus.WAF, None
+            elif isinstance(http_status, int) and (http_status >= 300 or http_status < 200):
+                return QueryStatus.AVAILABLE, None
+            elif http_status in (None, "?"):
+                return QueryStatus.UNKNOWN, None
+            else:
+                return QueryStatus.CLAIMED, None
+
+        elif error_type == "response_url":
+            error_flag = True
+            error = net_info.get("errorUrl")
+            if isinstance(error, str):
+                if error in url_for_check:
+                    error_flag = False
+
+            if error_flag:
+                return QueryStatus.CLAIMED, None
+            else:
+                return QueryStatus.AVAILABLE, None
+
+            if http_status in (403, 429, 503):
+                return QueryStatus.WAF, None
+            elif isinstance(http_status, int) and 200 <= http_status < 300:
+                return QueryStatus.CLAIMED, None
+            elif isinstance(http_status, int) and 300 <= http_status < 400:
+                return QueryStatus.AVAILABLE, None
+            else:
+                return QueryStatus.AVAILABLE, None
+
+        else:
+            raise ValueError(
+                f"Unknown Error Type '{error_type}' for " f"site '{social_network}'"
+            )
+
+    async def _browser_probe(url_probe, request_method, headers, request_payload, error_type, social_network, net_info):
+        """Execute a single probe through BrowserSession. Returns status tuple."""
+        http_status = "?"
+        response_text = b""
+        text_for_check = ""
+        response_time = None
+        error_context = None
+
+        if session is None:
+            error_context = "Browser session not available"
+            return QueryStatus.UNKNOWN, http_status, response_text, response_time, error_context, text_for_check
+
+        try:
+            if request_method == "GET" or request_method is None:
+                future = session.get(
+                    url=url_probe,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=timeout,
+                    json=request_payload,
+                )
+            elif request_method == "HEAD":
+                future = session.head(
+                    url=url_probe,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=timeout,
+                )
+            elif request_method == "POST":
+                future = session.post(
+                    url=url_probe,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=timeout,
+                    json=request_payload,
+                )
+            elif request_method == "PUT":
+                future = session.put(
+                    url=url_probe,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=timeout,
+                    json=request_payload,
+                )
+            else:
+                future = session.get(
+                    url=url_probe,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=timeout,
+                )
+
+            r = await future
+
+            # Get response time for response of our request.
+            try:
+                response_time = r.elapsed
+            except Exception:
+                response_time = None
+
+            # Attempt to get request information
+            try:
+                http_status = r.status_code
+            except Exception:
+                http_status = "?"
+
+            try:
+                if isinstance(r.text, bytes):
+                    text_for_check = r.text.decode("utf-8", errors="replace")
+                else:
+                    text_for_check = r.text
+            except Exception:
+                text_for_check = ""
+
+            try:
+                if isinstance(r.text, bytes):
+                    response_text = r.text
+                else:
+                    response_text = r.text.encode("utf-8") if r.text else b""
+            except Exception:
+                response_text = b""
+
+            try:
+                if isinstance(r.text, bytes):
+                    url_for_check = r.url.decode("utf-8", errors="replace")
+                else:
+                    url_for_check = r.url
+            except Exception:
+                url_for_check = ""
+
+        except asyncio.TimeoutError:
+            error_context = "Timeout Error"
+            text_for_check = ""
+        except Exception as err:
+            error_context = "Unknown Error"
+            text_for_check = ""
+
+        query_status, _ = _eval_status(
+            text_for_check, http_status, url_for_check, error_type, net_info, error_context, social_network
+        )
+
+        return query_status, http_status, response_text, response_time, error_context, text_for_check
+
+    async def _check_one(social_network, net_info):
+        """End-to-end check for a single site. Emits result as soon as done."""
         results_site = {"url_main": net_info.get("urlMain")}
 
         # Record URL of main site
@@ -183,8 +370,17 @@ async def soylock(
         # A user agent is needed because some sites don't return the correct
         # information since they think that we are bots (Which we actually are...)
         headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-            "accept-language": "en-US,en;q=0.6"
+            "accept-language": "en-US,en;q=0.9,ar;q=0.8",
+            "cache-control": "no-cache",
+            "content-type": "application/json",
+            "pragma": "no-cache",
+            "sec-ch-ua": "\"Google Chrome\";v=\"138\", \"Chromium\";v=\"138\", \"Not_A Brand\";v=\"24\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
         }
 
         if "headers" in net_info:
@@ -197,113 +393,103 @@ async def soylock(
         # Don't make request if username is invalid for the site
         regex_check = net_info.get("regexCheck")
         if regex_check and re.search(regex_check, username) is None:
-            # No need to do the check at the site: this username is not allowed.
             results_site["status"] = QueryResult(
                 username, social_network, url, QueryStatus.ILLEGAL
             )
             results_site["url_user"] = ""
             results_site["http_status"] = ""
             results_site["response_text"] = ""
-            query_notify.update(results_site["status"])
-        elif net_info.get("browserOnly"):
-            # Soon to be implemented
+            async with notify_lock:
+                query_notify.update(results_site["status"])
+            return social_network, results_site
+
+        if net_info.get("browserOnly") and session is None:
             results_site["status"] = QueryResult(
                 username, social_network, url, QueryStatus.UNIMPLEMENTED
             )
             results_site["url_user"] = ""
             results_site["http_status"] = ""
             results_site["response_text"] = ""
-            query_notify.update(results_site["status"])
+            async with notify_lock:
+                query_notify.update(results_site["status"])
+            return social_network, results_site
+
+        results_site["url_user"] = url
+        url_probe = net_info.get("urlProbe")
+        request_method = net_info.get("request_method")
+        request_payload = net_info.get("request_payload")
+
+        if request_payload is not None:
+            request_payload = interpolate_string(request_payload, username)
+
+        if url_probe is None:
+            url_probe = url
         else:
-            # URL of user on site (if it exists)
-            results_site["url_user"] = url
-            url_probe = net_info.get("urlProbe")
-            request_method = net_info.get("request_method")
-            request_payload = net_info.get("request_payload")
-            request = None
+            url_probe = interpolate_string(url_probe, username)
 
-            if request_method is not None:
-                if request_method == "GET":
-                    request = session.get
-                elif request_method == "HEAD":
-                    request = session.head
-                elif request_method == "POST":
-                    request = session.post
-                elif request_method == "PUT":
-                    request = session.put
-                else:
-                    raise RuntimeError(f"Unsupported request_method for {url}")
+        if request_method is None:
+            request_method = "GET"
 
-            if request_payload is not None:
-                request_payload = interpolate_string(request_payload, username)
-
-            if url_probe is None:
-                # Probe URL is normal one seen by people out on the web.
-                url_probe = url
-            else:
-                # There is a special URL for probing existence separate
-                # from where the user profile normally can be found.
-                url_probe = interpolate_string(url_probe, username)
-
-            if request is None:
-                request = session.get
-
-            if net_info["errorType"] == "response_url":
-                # Site forwards request to a different URL if username not
-                # found.  Disallow the redirect so we can capture the
-                # http status from the original URL request.
-                allow_redirects = False
-            else:
-                # Allow whatever redirect that the site wants to do.
-                # The final result of the request will be what is available.
-                allow_redirects = True
-
-            # This future starts running the request in a new thread, doesn't block the main thread
-            if proxy is not None:
-                proxies = {"http": proxy, "https": proxy}
-                future = request(
-                    url=url_probe,
-                    headers=headers,
-                    proxies=proxies,
-                    allow_redirects=allow_redirects,
-                    timeout=timeout,
-                    json=request_payload,
-                    impersonate="chrome",
-                )
-            else:
-                future = request(
-                    url=url_probe,
-                    headers=headers,
-                    allow_redirects=allow_redirects,
-                    timeout=timeout,
-                    json=request_payload,
-                    impersonate="chrome",
-                )
-
-            # Store future in data for access later
-            net_info["request_future"] = future
-
-        # Add this site's results into final dictionary with all the other results.
-        results_total[social_network] = results_site
-
-    # Open the file containing account links
-    # Core logic: If tor requests, make them here. If multi-threaded requests, wait for responses
-    for social_network, net_info in site_data.items():
-        # Retrieve results again
-        results_site = results_total.get(social_network)
-
-        # Retrieve other site information again
-        url = results_site.get("url_user")
-        status = results_site.get("status")
-        if status is not None:
-            # We have already determined the user doesn't exist here
-            continue
-
-        # Get the expected error type
         error_type = net_info["errorType"]
 
-        # Retrieve future and ensure it has finished
-        future = net_info["request_future"]
+        if session is not None and net_info.get("browserOnly"):
+            query_status, http_status, response_text, response_time, error_context, text_for_check = await _browser_probe(
+                url_probe, request_method, headers, request_payload, error_type, social_network, net_info
+            )
+
+            if dump_response:
+                print("+++++++++++++++++++++")
+                print(f"TARGET NAME   : {social_network}")
+                print(f"USERNAME      : {username}")
+                print(f"TARGET URL    : {url}")
+                print(f"TEST METHOD   : {error_type}")
+                try:
+                    print(f"STATUS CODES  : {net_info['errorCode']}")
+                except KeyError:
+                    pass
+                print("Results...")
+                print(f"RESPONSE CODE : {http_status}")
+                try:
+                    print(f"ERROR TEXT    : {net_info['errorMsg']}")
+                except KeyError:
+                    pass
+                print(">>>>> BEGIN RESPONSE TEXT")
+                try:
+                    print(text_for_check)
+                except Exception:
+                    pass
+                print("<<<<< END RESPONSE TEXT")
+                if session is not None:
+                    print("BROWSER_MODE  : TRUE")
+                print("VERDICT       : " + str(query_status))
+                print("+++++++++++++++++++++")
+
+            result = QueryResult(
+                username=username,
+                site_name=social_network,
+                site_url_user=url,
+                status=query_status,
+                query_time=response_time,
+                context=error_context,
+            )
+            async with notify_lock:
+                query_notify.update(result)
+
+            results_site["status"] = result
+            results_site["http_status"] = http_status
+            results_site["response_text"] = response_text
+            return social_network, results_site
+
+        future = _request_in_thread(
+            method=request_method,
+            url=url_probe,
+            headers=headers,
+            proxy=proxy,
+            allow_redirects=True,
+            timeout=timeout,
+            json_payload=request_payload,
+        )
+
         r, error_text, exception_text = await get_response(
             request_future=future, error_type=error_type, social_network=social_network
         )
@@ -324,113 +510,22 @@ async def soylock(
         except Exception:
             response_text = ""
 
-        query_status = QueryStatus.UNKNOWN
+        try:
+            url_for_check = r.url
+        except Exception:
+            url_for_check = ""
+
         error_context = None
-
-        # As WAFs advance and evolve, they will occasionally block Soylock and
-        # lead to false positives and negatives. Fingerprints should be added
-        # here to filter results that fail to bypass WAFs. Fingerprints should
-        # be highly targetted. Comment at the end of each fingerprint to
-        # indicate target and date fingerprinted.
-        WAFHitMsgs = [
-            r'.loading-spinner{visibility:hidden}body.no-js .challenge-running{display:none}body.dark{background-color:#222;color:#d9d9d9}body.dark a{color:#fff}body.dark a:hover{color:#ee730a;text-decoration:underline}body.dark .lds-ring div{border-color:#999 transparent transparent}body.dark .font-red{color:#b20f03}body.dark', # 2024-05-13 Cloudflare
-            r'<span id="challenge-error-text">', # 2024-11-11 Cloudflare error page
-            r'AwsWafIntegration.forceRefreshToken', # 2024-11-11 Cloudfront (AWS)
-            r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:', # 2024-04-09 PerimeterX / Human Security
-            'We’re committed to safety and security. Unless you’re a bot. Complete the challenge below and let us know you’re', # 2025-11-07 Reddit
-            'Please wait while your request is being verified...' # 2025-11-11 OurDJTalk
-        ]
-
-        RegulationHitMsgs = [
-            '<link rel="stylesheet" href="/dist/age-wall.min.', # 2025-11-11 Pornhub / YouPorn / RedTube
-            'Although this platform is, and has always been, for adults only, as it appears you are accessing the platform from', # 2025-11-11 ChaturBate
-            'We comply with laws across 19 states that mandate content controls and age verification measures.', # 2025-11-11 RocketTube
-            'Broke Straight Boys is the original Gay For Pay site. Watch over 2743 exclusive scenes of real straight boys doing whatever it takes to pay the bills - Highest Rated - Page 1', # 2025-11-11 RocketTube alternative
-            'Visitors from United Kingdom must verify their age to access this site.', # 2025-11-11 BongaCams
-            'To continue, we are required to verify that you are 18 or older, in line with the UK Online Safety Act.' # 2025-11-11 LushStories / Pornhub (A) / YouPorn (A) / RedTube (A)
-        ]
-
         if error_text is not None:
             error_context = error_text
 
-        elif any(hitMsg in r.text for hitMsg in WAFHitMsgs):
-            query_status = QueryStatus.WAF
+        query_status, _ = _eval_status(
+            response_text, http_status, url_for_check, error_type, net_info, error_context, social_network
+        )
 
-        elif any(hitMsg in r.text for hitMsg in RegulationHitMsgs):
-            query_status = QueryStatus.BLOCKED
-
-        elif error_type == "message":
-            # If the server returns a blocking or error status (common when a
-            # WAF or similar is in front of the site), treat it as WAF so we
-            # don't incorrectly return CLAIMED just because the response body
-            # doesn't include the configured error message.
-            #
-            # This addresses cases like Giphy where both existing and
-            # non-existing pages can return 403 and an empty body.
-            try:
-                status_code_val = int(http_status)
-            except Exception:
-                status_code_val = None
-
-            if status_code_val in (403, 429, 503):
-                # Common codes indicating blocking / rate limiting / service unavailable.
-                # Mark as WAF so the caller knows the probe couldn't determine existence.
-                query_status = QueryStatus.WAF
-            else:
-                # error_flag True denotes no error found in the HTML
-                # error_flag False denotes error found in the HTML
-                error_flag = True
-                errors = net_info.get("errorMsg")
-                # errors will hold the error message
-                # it can be string or list
-                # by isinstance method we can detect that
-                # and handle the case for strings as normal procedure
-                # and if its list we can iterate the errors
-                if isinstance(errors, str):
-                    # Checks if the error message is in the HTML
-                    # if error is present we will set flag to False
-                    if errors in r.text:
-                        error_flag = False
-                else:
-                    # If it's list, it will iterate all the error message
-                    for error in errors:
-                        if error in r.text:
-                            error_flag = False
-                            break
-                if error_flag:
-                    query_status = QueryStatus.CLAIMED
-                else:
-                    query_status = QueryStatus.AVAILABLE
-        elif error_type == "status_code":
-            error_codes = net_info.get("errorCode")
-            query_status = QueryStatus.CLAIMED
-
-            # Type consistency, allowing for both singlets and lists in manifest
-            if isinstance(error_codes, int):
-                error_codes = [error_codes]
-
-            if error_codes is not None and r.status_code in error_codes:
-                query_status = QueryStatus.AVAILABLE
-            elif r.status_code in (403, 429, 503):
-                query_status = QueryStatus.WAF
-            elif r.status_code >= 300 or r.status_code < 200:
-                query_status = QueryStatus.AVAILABLE
-        elif error_type == "response_url":
-            # For this detection method, we have turned off the redirect.
-            # So, there is no need to check the response URL: it will always
-            # match the request.  Instead, we will ensure that the response
-            # code indicates that the request was successful (i.e. no 404, or
-            # forward to some odd redirect).
-            if 200 <= r.status_code < 300:
-                query_status = QueryStatus.CLAIMED
-            elif r.status_code in (403, 429, 503):
-                query_status = QueryStatus.WAF
-            else:
-                query_status = QueryStatus.AVAILABLE
-        else:
-            # It should be impossible to ever get here...
-            raise ValueError(
-                f"Unknown Error Type '{error_type}' for " f"site '{social_network}'"
+        if session is not None and query_status in (QueryStatus.WAF, QueryStatus.BLOCKED):
+            query_status, http_status, response_text, response_time, error_context, text_for_check = await _browser_probe(
+                url_probe, request_method, headers, request_payload, error_type, social_network, net_info
             )
 
         if dump_response:
@@ -445,7 +540,7 @@ async def soylock(
                 pass
             print("Results...")
             try:
-                print(f"RESPONSE CODE : {r.status_code}")
+                print(f"RESPONSE CODE : {http_status}")
             except Exception:
                 pass
             try:
@@ -454,14 +549,18 @@ async def soylock(
                 pass
             print(">>>>> BEGIN RESPONSE TEXT")
             try:
-                print(r.text)
+                if isinstance(response_text, bytes):
+                    print(response_text.decode('utf-8', errors='replace'))
+                else:
+                    print(response_text)
             except Exception:
                 pass
             print("<<<<< END RESPONSE TEXT")
+            if session is not None:
+                print("BROWSER_MODE  : TRUE")
             print("VERDICT       : " + str(query_status))
             print("+++++++++++++++++++++")
 
-        # Notify caller about results of query.
         result = QueryResult(
             username=username,
             site_name=social_network,
@@ -470,19 +569,29 @@ async def soylock(
             query_time=response_time,
             context=error_context,
         )
-        query_notify.update(result)
+        async with notify_lock:
+            query_notify.update(result)
 
-        # Save status of request
         results_site["status"] = result
-
-        # Save results from request
         results_site["http_status"] = http_status
         results_site["response_text"] = response_text
+        return social_network, results_site
 
-        # Add this site's results into final dictionary with all of the other results.
-        results_total[social_network] = results_site
+    try:
+        tasks = [
+            asyncio.create_task(_check_one(sn, ni))
+            for sn, ni in site_data.items()
+        ]
+
+        for completed in asyncio.as_completed(tasks):
+            social_network, results_site = await completed
+            results_total[social_network] = results_site
+
+    finally:
+        pass
 
     return results_total
+
 
 def timeout_check(value):
     """Check Timeout Argument.
@@ -496,7 +605,7 @@ def timeout_check(value):
     Floating point number representing the time (in seconds) that should be
     used for the timeout.
 
-    NOTE:  Will raise an exception if the timeout in invalid.
+    NOTE:  Will raise an exception if the timeout is invalid.
     """
 
     float_value = float(value)
@@ -507,6 +616,36 @@ def timeout_check(value):
         )
 
     return float_value
+
+def tabs_check(value):
+    """Check tabs Argument.
+
+    Checks tabs for validity.
+
+    Keyword Arguments:
+    value                  -- Tab amount to be handled by chrome.
+
+    Return Value:
+    Integer representing the amount that should be
+    used for tabs.
+
+    NOTE:  Will raise an exception if the tabs is invalid.
+    """
+
+
+    int_value = int(value)
+    
+    if int_value <= 0:
+        raise ArgumentTypeError(
+            f"Invalid tabs value: {value}. Tabs must be a positive number."
+        )
+    elif int_value > 20:
+        raise ArgumentTypeError(
+            f"Invalid tabs value: {value}. Tabs shouldn't be more than 10."
+        )
+
+    return int_value
+
 
 def handler(signal_received, frame):
     """Exit gracefully without throwing errors
@@ -658,8 +797,17 @@ async def main():
     parser.add_argument(
         "--browser-mode",
         action="store_true",
+        dest="browser_mode",
         default=False,
-        help="Soon to be implemented",
+        help="Uses chromium to solve cloudflare turnstile.",
+    )
+
+    parser.add_argument(
+        "--tabs",
+        action="store",
+        type=tabs_check,
+        default=5,
+        help="Parallel tabs handled by the browser.",
     )
 
     parser.add_argument(
@@ -708,16 +856,22 @@ async def main():
                 if args.json_file.isnumeric():
                     pull_number = args.json_file
                     pull_url = f"https://api.github.com/repos/SystemCallW/Soylock/pulls/{pull_number}"
-                    pull_request_raw = requests.get(pull_url, timeout=30).text
-                    pull_request_json = json_loads(pull_request_raw)
 
-                    # Check if it's a valid pull request
-                    if "message" in pull_request_json:
-                        print(f"ERROR: Pull request #{pull_number} not found.")
+                    try:
+                        pr_response = requests.get(pull_url, timeout=30)
+                        pull_request_raw = pr_response.text
+                        pull_request_json = json_loads(pull_request_raw)
+
+                        # Check if it's a valid pull request
+                        if "message" in pull_request_json:
+                            print(f"ERROR: Pull request #{pull_number} not found.")
+                            sys.exit(1)
+
+                        head_commit_sha = pull_request_json["head"]["sha"]
+                        json_file_location = f"https://raw.githubusercontent.com/SystemCallW/Soylock/{head_commit_sha}/resources/data.json"
+                    except Exception:
+                        print("Failed to fetch PR info from GitHub.")
                         sys.exit(1)
-
-                    head_commit_sha = pull_request_json["head"]["sha"]
-                    json_file_location = f"https://raw.githubusercontent.com/SystemCallW/Soylock/{head_commit_sha}/resources/data.json"
 
             try:
                 sites = SitesInformation(data_file_path=json_file_location)
@@ -766,16 +920,34 @@ async def main():
 
     query_notify.splash()
 
+    if not args.browser_mode:
+        print("For more and accurate results use --browser-mode")
+
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
     }
+    try:
+        r = requests.get(forge_api_latest_release, headers=headers, timeout=30)
+        if r.status_code == 200:
+            data = r.json()
+            tag = data.get("tag_name")
+            if tag != "v" +__version__:
+                query_notify.versionAlert(tag)
+    except Exception:
+        pass  # Silently fail version check if offline
 
-    r = requests.get(forge_api_latest_release, headers=headers)
-    if r.status_code == 200:
-        data = r.json()
-        tag = data.get("tag_name")
-        if tag != "v" +__version__:
-            query_notify.versionAlert(tag)
+    # ── Initialize browser engine if browser-mode is enabled ──
+    engine = None
+    session = None
+    if args.browser_mode:
+        max_workers = args.tabs if args.tabs else (5 if len(site_data) >= 20 else len(site_data))
+        engine = BrowserEngine(
+            max_workers=max_workers,
+            headless=True,
+            proxy=args.proxy,
+        )
+        await engine.start()
+        session = BrowserSession(engine)
 
     # Run report on all specified users.
     all_usernames = []
@@ -785,57 +957,91 @@ async def main():
                 all_usernames.append(name)
         else:
             all_usernames.append(username)
-    for username in all_usernames:
-        results = await soylock(
-            username,
-            site_data,
-            query_notify,
-            dump_response=args.dump_response,
-            proxy=args.proxy,
-            timeout=args.timeout,
-        )
 
-        if args.output:
-            result_file = args.output
-        elif args.folderoutput:
-            # The usernames results should be stored in a targeted folder.
-            # If the folder doesn't exist, create it first
-            os.makedirs(args.folderoutput, exist_ok=True)
-            result_file = os.path.join(args.folderoutput, f"{username}.txt")
-        else:
-            result_file = f"{username}.txt"
+    try:
+        for username in all_usernames:
+            results = await soylock(
+                username,
+                site_data,
+                query_notify,
+                session=session,
+                dump_response=args.dump_response,
+                proxy=args.proxy,
+                timeout=args.timeout,
+            )
 
-        if args.output_txt:
-            with open(result_file, "w", encoding="utf-8") as file:
-                exists_counter = 0
-                for website_name in results:
-                    dictionary = results[website_name]
-                    if dictionary.get("status").status == QueryStatus.CLAIMED:
-                        exists_counter += 1
-                        file.write(dictionary["url_user"] + "\n")
-                file.write(f"Total Websites Username Detected On : {exists_counter}\n")
-
-        if args.csv:
-            result_file = f"{username}.csv"
-            if args.folderoutput:
+            if args.output:
+                result_file = args.output
+            elif args.folderoutput:
                 # The usernames results should be stored in a targeted folder.
                 # If the folder doesn't exist, create it first
                 os.makedirs(args.folderoutput, exist_ok=True)
-                result_file = os.path.join(args.folderoutput, result_file)
+                result_file = os.path.join(args.folderoutput, f"{username}.txt")
+            else:
+                result_file = f"{username}.txt"
 
-            with open(result_file, "w", newline="", encoding="utf-8") as csv_report:
-                writer = csv.writer(csv_report)
-                writer.writerow(
-                    [
-                        "username",
-                        "name",
-                        "url_main",
-                        "url_user",
-                        "exists",
-                        "http_status",
-                        "response_time_s",
-                    ]
-                )
+            if args.output_txt:
+                with open(result_file, "w", encoding="utf-8") as file:
+                    exists_counter = 0
+                    for website_name in results:
+                        dictionary = results[website_name]
+                        if dictionary.get("status").status == QueryStatus.CLAIMED:
+                            exists_counter += 1
+                            file.write(dictionary["url_user"] + "\n")
+                    file.write(f"Total Websites Username Detected On : {exists_counter}\n")
+
+            if args.csv:
+                result_file = f"{username}.csv"
+                if args.folderoutput:
+                    # The usernames results should be stored in a targeted folder.
+                    # If the folder doesn't exist, create it first
+                    os.makedirs(args.folderoutput, exist_ok=True)
+                    result_file = os.path.join(args.folderoutput, result_file)
+
+                with open(result_file, "w", newline="", encoding="utf-8") as csv_report:
+                    writer = csv.writer(csv_report)
+                    writer.writerow(
+                        [
+                            "username",
+                            "name",
+                            "url_main",
+                            "url_user",
+                            "exists",
+                            "http_status",
+                            "response_time_s",
+                        ]
+                    )
+                    for site in results:
+                        if (
+                            args.print_found
+                            and not args.print_all
+                            and results[site]["status"].status != QueryStatus.CLAIMED
+                        ):
+                            continue
+
+                        response_time_s = results[site]["status"].query_time
+                        if response_time_s is None:
+                            response_time_s = ""
+                        writer.writerow(
+                            [
+                                username,
+                                site,
+                                results[site]["url_main"],
+                                results[site]["url_user"],
+                                str(results[site]["status"].status),
+                                results[site]["http_status"],
+                                response_time_s,
+                            ]
+                        )
+            if args.xlsx:
+                usernames = []
+                names = []
+                url_main = []
+                url_user = []
+                exists = []
+                http_status = []
+                response_time_s = []
+
                 for site in results:
                     if (
                         args.print_found
@@ -844,62 +1050,35 @@ async def main():
                     ):
                         continue
 
-                    response_time_s = results[site]["status"].query_time
                     if response_time_s is None:
-                        response_time_s = ""
-                    writer.writerow(
-                        [
-                            username,
-                            site,
-                            results[site]["url_main"],
-                            results[site]["url_user"],
-                            str(results[site]["status"].status),
-                            results[site]["http_status"],
-                            response_time_s,
-                        ]
-                    )
-        if args.xlsx:
-            usernames = []
-            names = []
-            url_main = []
-            url_user = []
-            exists = []
-            http_status = []
-            response_time_s = []
+                        response_time_s.append("")
+                    else:
+                        response_time_s.append(results[site]["status"].query_time)
+                    usernames.append(username)
+                    names.append(site)
+                    url_main.append(results[site]["url_main"])
+                    url_user.append(results[site]["url_user"])
+                    exists.append(str(results[site]["status"].status))
+                    http_status.append(results[site]["http_status"])
 
-            for site in results:
-                if (
-                    args.print_found
-                    and not args.print_all
-                    and results[site]["status"].status != QueryStatus.CLAIMED
-                ):
-                    continue
+                DataFrame = pd.DataFrame(
+                    {
+                        "username": usernames,
+                        "name": names,
+                        "url_main": [f'=HYPERLINK(\"{u}\")' for u in url_main],
+                        "url_user": [f'=HYPERLINK(\"{u}\")' for u in url_user],
+                        "exists": exists,
+                        "http_status": http_status,
+                        "response_time_s": response_time_s,
+                    }
+                )
+                DataFrame.to_excel(f"{username}.xlsx", sheet_name="sheet1", index=False)
 
-                if response_time_s is None:
-                    response_time_s.append("")
-                else:
-                    response_time_s.append(results[site]["status"].query_time)
-                usernames.append(username)
-                names.append(site)
-                url_main.append(results[site]["url_main"])
-                url_user.append(results[site]["url_user"])
-                exists.append(str(results[site]["status"].status))
-                http_status.append(results[site]["http_status"])
+            print()
+    finally:
+        if engine is not None:
+            await engine.close()
 
-            DataFrame = pd.DataFrame(
-                {
-                    "username": usernames,
-                    "name": names,
-                    "url_main": [f'=HYPERLINK(\"{u}\")' for u in url_main],
-                    "url_user": [f'=HYPERLINK(\"{u}\")' for u in url_user],
-                    "exists": exists,
-                    "http_status": http_status,
-                    "response_time_s": response_time_s,
-                }
-            )
-            DataFrame.to_excel(f"{username}.xlsx", sheet_name="sheet1", index=False)
-
-        print()
     query_notify.finish()
 
 if __name__ == "__main__":
