@@ -172,6 +172,7 @@ async def soylock(
         'Your request has been blocked due to a network policy.', # 2026-06-08 Reddit
         '<noscript><p><b>JavaScript is required to access this page.</b></p></noscript>', # 2026-06-08 MusicBrainz
         '<head><title>415 Unsupported Media Type</title></head>',  # 2026-06-08 OurDJTalk
+        'https://assets.guns.lol/wasm/gpp_gunslol.js' # 2026-06-09 guns.lol
     ]
 
     RegulationHitMsgs = [

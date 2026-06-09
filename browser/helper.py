@@ -130,6 +130,7 @@ async def is_challenge_present(page: Page) -> bool:
             or 'This may be caused by certain browser extensions, such as ad blockers, or by connecting through a VPN or proxy.' in content
             or 'Please wait while your request is being verified...' in content
             or '<img class="loading-img" src="/pre-loading.png">' in content
+            or 'https://assets.guns.lol/wasm/gpp_gunslol.js' in content
             or 'Please enable JavaScript to continue.' in content
             or 'Verifying your browser, please wait' in content
             or 'Checking your browser' in content
