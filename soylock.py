@@ -18,9 +18,14 @@ import re
 import tls_client
 import asyncio
 import requests
+import urllib.parse
+import codecs
+from parser import Parser
+from datetime import datetime
+from dataclasses import dataclass
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from json import loads as json_loads
-from typing import Optional
+from typing import Any, Optional, Union
 
 from browser.client import BrowserEngine, BrowserSession
 
@@ -172,7 +177,8 @@ async def soylock(
         'Your request has been blocked due to a network policy.', # 2026-06-08 Reddit
         '<noscript><p><b>JavaScript is required to access this page.</b></p></noscript>', # 2026-06-08 MusicBrainz
         '<head><title>415 Unsupported Media Type</title></head>',  # 2026-06-08 OurDJTalk
-        'https://assets.guns.lol/wasm/gpp_gunslol.js' # 2026-06-09 guns.lol
+        'https://assets.guns.lol/wasm/gpp_gunslol.js', # 2026-06-09 guns.lol
+        '<title>Reddit - Please wait for verification</title>' # 2026-06-10 Reddit
     ]
 
     RegulationHitMsgs = [
@@ -187,201 +193,45 @@ async def soylock(
         'Youporn is not currently accepting new account registrations in your region' # 2026-06-08 Youporn
     ]
 
-    def _eval_status(text_for_check, http_status, url_for_check, error_type, net_info, error_context, social_network):
-        """Determine QueryStatus from response text/status."""
-        if error_context is not None:
-            return QueryStatus.UNKNOWN, error_context
-
-        if any(hitMsg in text_for_check for hitMsg in WAFHitMsgs):
-            return QueryStatus.WAF, None
-
-        if any(hitMsg in text_for_check for hitMsg in RegulationHitMsgs):
-            return QueryStatus.BLOCKED, None
-
-        if error_type == "message":
-            try:
-                status_code_val = int(http_status) if http_status not in (None, "?") else None
-            except Exception:
-                status_code_val = None
-
-            error_flag = True
-            errors = net_info.get("errorMsg")
-            if isinstance(errors, str):
-                if errors in text_for_check:
-                    error_flag = False
-            else:
-                for error in errors:
-                    if error in text_for_check:
-                        error_flag = False
-                        break
-            if not error_flag:
-                if status_code_val in (403, 429, 503):
-                    return QueryStatus.WAF, None
-                elif status_code_val in (0, 500):
-                    return QueryStatus.UNKNOWN, None
-            if error_flag:
-                return QueryStatus.CLAIMED, None
-            else:
-                return QueryStatus.AVAILABLE, None
-
-        elif error_type == "status_code":
-            error_codes = net_info.get("errorCode")
-            if isinstance(error_codes, int):
-                error_codes = [error_codes]
-
-            if error_codes is not None and http_status in error_codes:
-                return QueryStatus.AVAILABLE, None
-            elif http_status in (403, 429, 503):
-                return QueryStatus.WAF, None
-            elif http_status in (0, 500):
-                return QueryStatus.UNKNOWN, None
-            elif isinstance(http_status, int) and (http_status >= 300 or http_status < 200):
-                return QueryStatus.AVAILABLE, None
-            elif http_status in (None, "?"):
-                return QueryStatus.UNKNOWN, None
-            else:
-                return QueryStatus.CLAIMED, None
-
-        elif error_type == "response_url":
-            error_flag = True
-            error = net_info.get("errorUrl")
-            if isinstance(error, str):
-                if error in url_for_check:
-                    error_flag = False
-
-            if error_flag:
-                return QueryStatus.CLAIMED, None
-            else:
-                return QueryStatus.AVAILABLE, None
-
-            if http_status in (403, 429, 503):
-                return QueryStatus.WAF, None
-            elif http_status in (0, 500):
-                return QueryStatus.UNKNOWN, None
-            elif isinstance(http_status, int) and 200 <= http_status < 300:
-                return QueryStatus.CLAIMED, None
-            elif isinstance(http_status, int) and 300 <= http_status < 400:
-                return QueryStatus.AVAILABLE, None
-            else:
-                return QueryStatus.AVAILABLE, None
-
-        else:
-            raise ValueError(
-                f"Unknown Error Type '{error_type}' for " f"site '{social_network}'"
-            )
-
-    async def _browser_probe(url_probe, request_method, headers, request_payload, error_type, social_network, net_info):
-        """Execute a single probe through BrowserSession. Returns status tuple."""
-        http_status = "?"
-        response_text = b""
-        text_for_check = ""
-        response_time = None
-        error_context = None
-
-        if session is None:
-            error_context = "Browser session not available"
-            return QueryStatus.UNKNOWN, http_status, response_text, response_time, error_context, text_for_check
-
-        try:
-            if request_method == "GET" or request_method is None:
-                future = session.get(
-                    url=url_probe,
-                    headers=headers,
-                    allow_redirects=True,
-                    timeout=timeout,
-                    json=request_payload,
-                )
-            elif request_method == "HEAD":
-                future = session.head(
-                    url=url_probe,
-                    headers=headers,
-                    allow_redirects=True,
-                    timeout=timeout,
-                )
-            elif request_method == "POST":
-                future = session.post(
-                    url=url_probe,
-                    headers=headers,
-                    allow_redirects=True,
-                    timeout=timeout,
-                    json=request_payload,
-                )
-            elif request_method == "PUT":
-                future = session.put(
-                    url=url_probe,
-                    headers=headers,
-                    allow_redirects=True,
-                    timeout=timeout,
-                    json=request_payload,
-                )
-            else:
-                future = session.get(
-                    url=url_probe,
-                    headers=headers,
-                    allow_redirects=True,
-                    timeout=timeout,
-                )
-
-            r = await future
-
-            # Get response time for response of our request.
-            try:
-                response_time = r.elapsed
-            except Exception:
-                response_time = None
-
-            # Attempt to get request information
-            try:
-                http_status = r.status_code
-            except Exception:
-                http_status = "?"
-
-            try:
-                if isinstance(r.text, bytes):
-                    text_for_check = r.text.decode("utf-8", errors="replace")
-                else:
-                    text_for_check = r.text
-            except Exception:
-                text_for_check = ""
-
-            try:
-                if isinstance(r.text, bytes):
-                    response_text = r.text
-                else:
-                    response_text = r.text.encode("utf-8") if r.text else b""
-            except Exception:
-                response_text = b""
-
-            try:
-                if isinstance(r.text, bytes):
-                    url_for_check = r.url.decode("utf-8", errors="replace")
-                else:
-                    url_for_check = r.url
-            except Exception:
-                url_for_check = ""
-
-        except asyncio.TimeoutError:
-            error_context = "Timeout Error"
-            text_for_check = ""
-        except Exception as err:
-            error_context = "Unknown Error"
-            text_for_check = ""
-
-        query_status, _ = _eval_status(
-            text_for_check, http_status, url_for_check, error_type, net_info, error_context, social_network
+    class ProbeResult:
+        __slots__ = (
+            "query_status",
+            "http_status",
+            "response_text",
+            "response_time",
+            "error_context",
+            "text_for_check",
         )
 
-        return query_status, http_status, response_text, response_time, error_context, text_for_check
+        def __init__(
+            self,
+            query_status,
+            http_status="?",
+            response_text="",
+            response_time=None,
+            error_context=None,
+            text_for_check="",
+        ):
+            self.query_status = query_status
+            self.http_status = http_status
+            self.response_text = response_text
+            self.response_time = response_time
+            self.error_context = error_context
+            self.text_for_check = text_for_check
 
-    async def _check_one(social_network, net_info):
-        """End-to-end check for a single site. Emits result as soon as done."""
-        results_site = {"url_main": net_info.get("urlMain")}
+    def _decode_text(value) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return value or ""
 
-        # Record URL of main site
+    def _safe_attr(obj, attr: str, default=None):
+        try:
+            return getattr(obj, attr)
+        except Exception:
+            return default
 
-        # A user agent is needed because some sites don't return the correct
-        # information since they think that we are bots (Which we actually are...)
-        headers = {
+    def _default_headers():
+        return {
             "accept-language": "en-US,en;q=0.9,ar;q=0.8",
             "cache-control": "no-cache",
             "content-type": "application/json",
@@ -392,106 +242,196 @@ async def soylock(
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
-            "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+            "user-agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/138.0.0.0 Safari/537.36"
+            ),
         }
 
-        if "headers" in net_info:
-            # Override/append any extra headers required by a given site.
-            headers.update(net_info["headers"])
+    def _eval_status(
+        text_for_check,
+        http_status,
+        url_for_check,
+        error_type,
+        net_info,
+        error_context,
+        social_network,
+    ):
+        """Determine QueryStatus from response text/status."""
+        text_for_check = _decode_text(text_for_check)
+        url_for_check = _decode_text(url_for_check)
 
-        # URL of user on site (if it exists)
-        url = interpolate_string(net_info["url"], username.replace(' ', '%20'))
+        if error_context is not None:
+            return QueryStatus.UNKNOWN, error_context
 
-        # Don't make request if username is invalid for the site
-        regex_check = net_info.get("regexCheck")
-        if regex_check and re.search(regex_check, username) is None:
-            results_site["status"] = QueryResult(
-                username, social_network, url, QueryStatus.ILLEGAL
+        if any(hit_msg in text_for_check for hit_msg in WAFHitMsgs):
+            return QueryStatus.WAF, None
+
+        if any(hit_msg in text_for_check for hit_msg in RegulationHitMsgs):
+            return QueryStatus.BLOCKED, None
+
+        if "Page.goto: NS_ERROR_NET_EMPTY_RESPONSE" in text_for_check:
+            return QueryStatus.UNKNOWN, error_context
+
+        if error_type == "message":
+            try:
+                status_code_val = int(http_status) if http_status not in (None, "?") else None
+            except Exception:
+                status_code_val = None
+
+            error_flag = True
+            errors = net_info.get("errorMsg")
+
+            if isinstance(errors, str):
+                if errors in text_for_check:
+                    error_flag = False
+            elif errors is not None:
+                for error in errors:
+                    if error in text_for_check:
+                        error_flag = False
+                        break
+
+            if not error_flag:
+                if status_code_val in (403, 429, 503):
+                    return QueryStatus.WAF, None
+                if status_code_val in (0, 500):
+                    return QueryStatus.UNKNOWN, None
+
+            if error_flag:
+                return QueryStatus.CLAIMED, None
+
+            return QueryStatus.AVAILABLE, None
+
+        if error_type == "status_code":
+            error_codes = net_info.get("errorCode")
+
+            if isinstance(error_codes, int):
+                error_codes = [error_codes]
+
+            if error_codes is not None and http_status in error_codes:
+                return QueryStatus.AVAILABLE, None
+            if http_status in (403, 429, 503):
+                return QueryStatus.WAF, None
+            if http_status in (0, 500):
+                return QueryStatus.UNKNOWN, None
+            if isinstance(http_status, int) and (http_status >= 300 or http_status < 200):
+                return QueryStatus.AVAILABLE, None
+            if http_status in (None, "?"):
+                return QueryStatus.UNKNOWN, None
+
+            return QueryStatus.CLAIMED, None
+
+        if error_type == "response_url":
+            error_flag = True
+            error = net_info.get("errorUrl")
+
+            if isinstance(error, str) and error in url_for_check:
+                error_flag = False
+
+            if error_flag:
+                return QueryStatus.CLAIMED, None
+
+            return QueryStatus.AVAILABLE, None
+
+        raise ValueError(
+            f"Unknown Error Type '{error_type}' for site '{social_network}'"
+        )
+
+    async def _browser_probe(
+        url_probe,
+        request_method,
+        headers,
+        request_payload,
+        error_type,
+        social_network,
+        net_info,
+    ):
+        """Execute a single probe through BrowserSession."""
+        if session is None:
+            return ProbeResult(
+                query_status=QueryStatus.UNKNOWN,
+                error_context="Browser session not available",
             )
-            results_site["url_user"] = ""
-            results_site["http_status"] = ""
-            results_site["response_text"] = ""
-            async with notify_lock:
-                query_notify.update(results_site["status"])
-            return social_network, results_site
 
-        if net_info.get("browserOnly") and session is None:
-            results_site["status"] = QueryResult(
-                username, social_network, url, QueryStatus.UNIMPLEMENTED
-            )
-            results_site["url_user"] = ""
-            results_site["http_status"] = ""
-            results_site["response_text"] = ""
-            async with notify_lock:
-                query_notify.update(results_site["status"])
-            return social_network, results_site
+        http_status = "?"
+        response_text = b""
+        text_for_check = ""
+        response_time = None
+        error_context = None
+        url_for_check = ""
 
-        results_site["url_user"] = url
-        url_probe = net_info.get("urlProbe")
-        request_method = net_info.get("request_method")
-        request_payload = net_info.get("request_payload")
+        try:
+            method = (request_method or "GET").upper()
 
-        if request_payload is not None:
-            request_payload = interpolate_string(request_payload, username)
+            request_fn = {
+                "GET": session.get,
+                "HEAD": session.head,
+                "POST": session.post,
+                "PUT": session.put,
+            }.get(method, session.get)
 
-        if url_probe is None:
-            url_probe = url
-        else:
-            url_probe = interpolate_string(url_probe, username)
+            request_kwargs = {
+                "url": url_probe,
+                "headers": headers,
+                "allow_redirects": True,
+                "timeout": timeout,
+            }
 
-        if request_method is None:
-            request_method = "GET"
+            if method in ("GET", "POST", "PUT"):
+                request_kwargs["json"] = request_payload
 
-        error_type = net_info["errorType"]
+            r = await request_fn(**request_kwargs)
 
-        if session is not None and net_info.get("browserOnly"):
-            query_status, http_status, response_text, response_time, error_context, text_for_check = await _browser_probe(
-                url_probe, request_method, headers, request_payload, error_type, social_network, net_info
-            )
+            response_time = _safe_attr(r, "elapsed")
+            http_status = _safe_attr(r, "status_code", "?")
 
-            if dump_response:
-                print("+++++++++++++++++++++")
-                print(f"TARGET NAME   : {social_network}")
-                print(f"USERNAME      : {username}")
-                print(f"TARGET URL    : {url}")
-                print(f"TEST METHOD   : {error_type}")
-                try:
-                    print(f"STATUS CODES  : {net_info['errorCode']}")
-                except KeyError:
-                    pass
-                print("Results...")
-                print(f"RESPONSE CODE : {http_status}")
-                try:
-                    print(f"ERROR TEXT    : {net_info['errorMsg']}")
-                except KeyError:
-                    pass
-                print(">>>>> BEGIN RESPONSE TEXT")
-                try:
-                    print(text_for_check)
-                except Exception:
-                    pass
-                print("<<<<< END RESPONSE TEXT")
-                if session is not None:
-                    print("BROWSER_MODE  : TRUE")
-                print("VERDICT       : " + str(query_status))
-                print("+++++++++++++++++++++")
+            raw_text = _safe_attr(r, "text", b"")
+            text_for_check = _decode_text(raw_text)
 
-            result = QueryResult(
-                username=username,
-                site_name=social_network,
-                site_url_user=url,
-                status=query_status,
-                query_time=response_time,
-                context=error_context,
-            )
-            async with notify_lock:
-                query_notify.update(result)
+            if isinstance(raw_text, bytes):
+                response_text = raw_text
+            else:
+                response_text = raw_text.encode("utf-8") if raw_text else b""
 
-            results_site["status"] = result
-            results_site["http_status"] = http_status
-            results_site["response_text"] = response_text
-            return social_network, results_site
+            url_for_check = _decode_text(_safe_attr(r, "url", ""))
 
+        except asyncio.TimeoutError:
+            error_context = "Timeout Error"
+            text_for_check = ""
+        except Exception:
+            error_context = "Unknown Error"
+            text_for_check = ""
+
+        query_status, _ = _eval_status(
+            text_for_check,
+            http_status,
+            url_for_check,
+            error_type,
+            net_info,
+            error_context,
+            social_network,
+        )
+
+        return ProbeResult(
+            query_status=query_status,
+            http_status=http_status,
+            response_text=response_text,
+            response_time=response_time,
+            error_context=error_context,
+            text_for_check=text_for_check,
+        )
+
+    async def _http_probe(
+        url_probe,
+        request_method,
+        headers,
+        request_payload,
+        error_type,
+        social_network,
+        net_info,
+    ):
+        """Execute a single probe through the normal HTTP request path."""
         future = _request_in_thread(
             method=request_method,
             url=url_probe,
@@ -503,104 +443,324 @@ async def soylock(
         )
 
         r, error_text, exception_text = await get_response(
-            request_future=future, error_type=error_type, social_network=social_network
+            request_future=future,
+            error_type=error_type,
+            social_network=social_network,
         )
 
-        # Get response time for response of our request.
-        try:
-            response_time = r.elapsed
-        except AttributeError:
-            response_time = None
+        response_time = _safe_attr(r, "elapsed")
+        http_status = _safe_attr(r, "status_code", "?")
+        response_text = _safe_attr(r, "text", "")
+        url_for_check = _safe_attr(r, "url", "")
 
-        # Attempt to get request information
-        try:
-            http_status = r.status_code
-        except Exception:
-            http_status = "?"
-        try:
-            response_text = r.text
-        except Exception:
-            response_text = ""
-
-        try:
-            url_for_check = r.url
-        except Exception:
-            url_for_check = ""
-
-        error_context = None
-        if error_text is not None:
-            error_context = error_text
+        error_context = error_text if error_text is not None else None
 
         query_status, _ = _eval_status(
-            response_text, http_status, url_for_check, error_type, net_info, error_context, social_network
+            response_text,
+            http_status,
+            url_for_check,
+            error_type,
+            net_info,
+            error_context,
+            social_network,
         )
 
-        if session is not None and query_status in (QueryStatus.WAF, QueryStatus.BLOCKED):
-            query_status, http_status, response_text, response_time, error_context, text_for_check = await _browser_probe(
-                url_probe, request_method, headers, request_payload, error_type, social_network, net_info
+        return ProbeResult(
+            query_status=query_status,
+            http_status=http_status,
+            response_text=response_text,
+            response_time=response_time,
+            error_context=error_context,
+            text_for_check=_decode_text(response_text),
+        )
+
+    async def _run_probe(
+        browser_only,
+        url_probe,
+        request_method,
+        headers,
+        request_payload,
+        error_type,
+        social_network,
+        net_info,
+    ):
+        """Choose HTTP/browser path, including WAF/BLOCKED browser retry."""
+        if browser_only:
+            return await _browser_probe(
+                url_probe,
+                request_method,
+                headers,
+                request_payload,
+                error_type,
+                social_network,
+                net_info,
             )
 
-        if dump_response:
-            print("+++++++++++++++++++++")
-            print(f"TARGET NAME   : {social_network}")
-            print(f"USERNAME      : {username}")
-            print(f"TARGET URL    : {url}")
-            print(f"TEST METHOD   : {error_type}")
-            try:
-                print(f"STATUS CODES  : {net_info['errorCode']}")
-            except KeyError:
-                pass
-            print("Results...")
-            try:
-                print(f"RESPONSE CODE : {http_status}")
-            except Exception:
-                pass
-            try:
-                print(f"ERROR TEXT    : {net_info['errorMsg']}")
-            except KeyError:
-                pass
-            print(">>>>> BEGIN RESPONSE TEXT")
-            try:
-                if isinstance(response_text, bytes):
-                    print(response_text.decode('utf-8', errors='replace'))
-                else:
-                    print(response_text)
-            except Exception:
-                pass
-            print("<<<<< END RESPONSE TEXT")
-            if session is not None:
-                print("BROWSER_MODE  : TRUE")
-            print("VERDICT       : " + str(query_status))
-            print("+++++++++++++++++++++")
-
-        result = QueryResult(
-            username=username,
-            site_name=social_network,
-            site_url_user=url,
-            status=query_status,
-            query_time=response_time,
-            context=error_context,
+        result = await _http_probe(
+            url_probe,
+            request_method,
+            headers,
+            request_payload,
+            error_type,
+            social_network,
+            net_info,
         )
+
+        if session is not None and result.query_status in (
+            QueryStatus.WAF,
+            QueryStatus.BLOCKED,
+        ):
+            return await _browser_probe(
+                url_probe,
+                request_method,
+                headers,
+                request_payload,
+                error_type,
+                social_network,
+                net_info,
+            )
+
+        return result
+
+    def _dump_probe_result(result, social_network, url, error_type, net_info):
+        print("+++++++++++++++++++++")
+        print(f"TARGET NAME   : {social_network}")
+        print(f"USERNAME      : {username}")
+        print(f"TARGET URL    : {url}")
+        print(f"TEST METHOD   : {error_type}")
+
+        if "errorCode" in net_info:
+            print(f"STATUS CODES  : {net_info['errorCode']}")
+
+        print("Results...")
+        print(f"RESPONSE CODE : {result.http_status}")
+
+        if "errorMsg" in net_info:
+            print(f"ERROR TEXT    : {net_info['errorMsg']}")
+
+        print(">>>>> BEGIN RESPONSE TEXT")
+        try:
+            print(result.text_for_check or _decode_text(result.response_text))
+        except Exception:
+            pass
+        print("<<<<< END RESPONSE TEXT")
+
+        if session is not None:
+            print("BROWSER_MODE  : TRUE")
+
+        print("VERDICT       : " + str(result.query_status))
+        print("+++++++++++++++++++++")
+
+    def _parser_for_result(result, net_info):
+        if net_info.get("fields") is None and not net_info.get("dumpUrls"):
+            return None
+
+        return Parser(_decode_text(result.response_text))
+
+    def _extract_named_fields(parser, net_info):
+        found_fields = {}
+
+        for field, path in (net_info.get("fields") or {}).items():
+            found = parser.find(path)
+
+            if found is None or found == "":
+                continue
+
+            if isinstance(found, int) and "date" in field.lower():
+                found = datetime.fromtimestamp(found).strftime("%Y-%m-%d %H:%M:%S")
+
+            found_fields[field] = found
+
+        return found_fields
+
+    def _normalize_dump_urls(dump_urls):
+        if dump_urls is None:
+            return []
+        if isinstance(dump_urls, str):
+            return [dump_urls]
+        return list(dump_urls)
+
+    def _normalize_found_url(candidate_url, url_filter):
+        if ("https://www.youtube.com/redirect?" in candidate_url or "https://steamcommunity.com/linkfilter" in candidate_url):
+            return urllib.parse.unquote(candidate_url.split("=")[-1])
+
+        if url_filter == "url":
+            return None
+
+        if "http" in candidate_url:
+            return codecs.decode(
+                urllib.parse.unquote(candidate_url),
+                "unicode_escape",
+            )
+
+        if "/cdn-cgi/l/email-protection" in candidate_url:
+            return "Found javascript protected email (you can copy it from browser)"
+
+        return None
+
+    def _extract_dump_urls(parser, net_info, target_url):
+        url_filters = _normalize_dump_urls(net_info.get("dumpUrls"))
+
+        if not url_filters:
+            return {}
+
+        url_attr = net_info.get("urlAttr")
+        urls = []
+
+        for url_filter in url_filters:
+            if url_attr:
+                urls.extend(parser.find_all(url_filter, strategy="html", html_attr=url_attr))
+            else:
+                urls.extend(parser.find_all(url_filter))
+
+        found_urls = []
+
+        for candidate_url in urls:
+            if candidate_url is None or target_url in candidate_url:
+                continue
+
+            for url_filter in url_filters:
+                normalized_url = _normalize_found_url(candidate_url, url_filter)
+                if normalized_url:
+                    found_urls.append(normalized_url)
+
+        if not found_urls:
+            return {}
+
+        unique_urls = list(dict.fromkeys(found_urls))
+
+        return {"Urls": "\n".join(unique_urls) + " (a chunk of the links may be stripped)"}
+
+    def _extract_found_fields(result, net_info, url):
+        if result.query_status != QueryStatus.CLAIMED:
+            return {}
+
+        parser = _parser_for_result(result, net_info)
+
+        if parser is None:
+            return {}
+
+        found_fields = {}
+        found_fields.update(_extract_named_fields(parser, net_info))
+        found_fields.update(_extract_dump_urls(parser, net_info, url))
+
+        return found_fields
+
+    async def _emit_result(results_site, result, http_status="", response_text=""):
         async with notify_lock:
             query_notify.update(result)
 
         results_site["status"] = result
         results_site["http_status"] = http_status
         results_site["response_text"] = response_text
+
+    async def _check_one(social_network, net_info):
+        """End-to-end check for a single site. Emits result as soon as done."""
+        results_site = {"url_main": net_info.get("urlMain")}
+
+        headers = _default_headers()
+        headers.update(net_info.get("headers", {}))
+
+        url = interpolate_string(net_info["url"], username.replace(" ", "%20"))
+
+        regex_check = net_info.get("regexCheck")
+        if regex_check and re.search(regex_check, username) is None:
+            results_site["url_user"] = ""
+
+            result = QueryResult(
+                username,
+                social_network,
+                url,
+                QueryStatus.ILLEGAL,
+            )
+
+            await _emit_result(results_site, result)
+            return social_network, results_site
+
+        browser_only = bool(net_info.get("browserOnly"))
+
+        if browser_only and session is None:
+            results_site["url_user"] = ""
+
+            result = QueryResult(
+                username,
+                social_network,
+                url,
+                QueryStatus.UNIMPLEMENTED,
+            )
+
+            await _emit_result(results_site, result)
+            return social_network, results_site
+
+        results_site["url_user"] = url
+
+        url_probe = net_info.get("urlProbe")
+        if url_probe is None:
+            url_probe = url
+        else:
+            url_probe = interpolate_string(url_probe, username)
+
+        request_method = net_info.get("request_method") or "GET"
+        request_payload = net_info.get("request_payload")
+
+        if request_payload is not None:
+            request_payload = interpolate_string(request_payload, username)
+
+        error_type = net_info["errorType"]
+
+        probe_result = await _run_probe(
+            browser_only,
+            url_probe,
+            request_method,
+            headers,
+            request_payload,
+            error_type,
+            social_network,
+            net_info,
+        )
+
+        if dump_response:
+            _dump_probe_result(
+                probe_result,
+                social_network,
+                url,
+                error_type,
+                net_info,
+            )
+
+        found_fields = _extract_found_fields(
+            probe_result,
+            net_info,
+            url,
+        )
+
+        result = QueryResult(
+            username=username,
+            site_name=social_network,
+            site_url_user=url,
+            status=probe_result.query_status,
+            query_time=probe_result.response_time,
+            context=probe_result.error_context,
+            fields=found_fields,
+        )
+
+        await _emit_result(
+            results_site,
+            result,
+            http_status=probe_result.http_status,
+            response_text=probe_result.response_text,
+        )
+
         return social_network, results_site
 
-    try:
-        tasks = [
-            asyncio.create_task(_check_one(sn, ni))
-            for sn, ni in site_data.items()
-        ]
+    tasks = [
+        asyncio.create_task(_check_one(social_network, net_info))
+        for social_network, net_info in site_data.items()
+    ]
 
-        for completed in asyncio.as_completed(tasks):
-            social_network, results_site = await completed
-            results_total[social_network] = results_site
-
-    finally:
-        pass
+    for completed in asyncio.as_completed(tasks):
+        social_network, results_site = await completed
+        results_total[social_network] = results_site
 
     return results_total
 

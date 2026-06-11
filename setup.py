@@ -369,18 +369,19 @@ with Camoufox(executable_path=r"{exe}") as browser:
 
     setup(
         name="soylock",
-        version="0.17.0",
+        version="0.18.0",
         description="",
         author="SystemCallW",
         packages=find_packages(),
         python_requires=">=3.9",
         install_requires=[
+            "bs4",
             "pandas",
             "colorama",
             "requests",
             "tls_client",
             "playwright==1.57.0",
-            "cloverlabs-camoufox>=0.6.0",
+            "cloverlabs-camoufox==0.6.0",
         ],
         cmdclass={
             "install": InstallCommand,

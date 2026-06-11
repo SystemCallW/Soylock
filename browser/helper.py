@@ -124,7 +124,7 @@ async def is_challenge_present(page: Page) -> bool:
         return (
             'Just a moment...' in title
             or 'NG Guard' in title
-            or 'IFTTT / 429 Error' in title
+            or 'Reddit - Please wait for verification' in title
             or 'Enable JavaScript and cookies to continue' in content
             or 'This requires JavaScript. Enable JavaScript and then reload the page.' in content
             or 'This may be caused by certain browser extensions, such as ad blockers, or by connecting through a VPN or proxy.' in content

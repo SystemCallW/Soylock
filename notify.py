@@ -6,6 +6,9 @@ results of queries.
 from result import QueryStatus
 from colorama import Fore, Style
 import webbrowser
+import textwrap
+import shutil
+import re
 
 # Global variable to count the number of results.
 globvar = 0
@@ -268,6 +271,36 @@ class QueryNotifyPrint(QueryNotify):
                   f"{self.result.site_url_user}")
             if self.browse:
                 webbrowser.open(self.result.site_url_user, 2)
+            if result.fields is not None:
+                for name, value in result.fields.items():
+                    prefix = (Style.BRIGHT + Fore.WHITE + "    - " + Style.RESET_ALL +
+                              Style.BRIGHT + Fore.GREEN + name + Style.RESET_ALL +
+                              Fore.WHITE + ": " + Style.RESET_ALL)
+
+                    visible_prefix = re.sub(r'\x1b\[[0-9;]*m', '', prefix)
+                    indent = " " * len(visible_prefix)
+
+                    term_width = shutil.get_terminal_size().columns
+                    wrap_width = max(40, term_width - len(visible_prefix))
+
+                    lines = str(value).splitlines()
+                    wrapped_lines = []
+
+                    for line in lines:
+                        if line.strip():
+                            wrapped = textwrap.wrap(
+                                line,
+                                width=wrap_width,
+                                break_long_words=False,
+                                break_on_hyphens=False,
+                                replace_whitespace=True
+                            )
+                            wrapped_lines.extend(wrapped)
+                        else:
+                            wrapped_lines.append("")
+
+                    formatted_value = ("\n" + indent).join(wrapped_lines)
+                    print(prefix + formatted_value)
 
         elif result.status == QueryStatus.AVAILABLE:
             if self.print_all:

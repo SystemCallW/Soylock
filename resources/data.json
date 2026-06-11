@@ -370,6 +370,17 @@
     "errorType": "status_code",
     "url": "https://{}.carrd.co/",
     "urlMain": "https://carrd.co/",
+    "fields": {
+        "About": "p"
+    },
+    "dumpUrls": [
+        "n01",
+        "n02",
+        "n03",
+        "n04",
+        "n05"
+    ],
+    "urlAttr": "href",
     "username_claimed": "blue"
   },
   "Career.habr": {
@@ -383,6 +394,12 @@
     "errorType": "status_code",
     "url": "https://cash.app/${}",
     "urlMain": "https://cash.app",
+    "fields": {
+        "Name": "display_name",
+        "Verified": "is_verified_account",
+        "Plan": "rate_plan",
+        "Country Code": "country_code"
+    },
     "username_claimed": "hotdiggitydog",
     "username_unclaimed": "HelloItsADell"
   },
@@ -701,6 +718,17 @@
     "regexCheck": "^[a-zA-Z][a-zA-Z0-9_-]*$",
     "url": "https://{}.deviantart.com",
     "urlMain": "https://deviantart.com",
+    "fields": {
+        "Username": "about\\\":{\\\"username",
+        "Country": "country",
+        "Age": "age",
+        "Birth Year": "dobYear",
+        "Birth Month": "dobMonth",
+        "Birth Day": "dobDay",
+        "Gender": "gender",
+        "Website": "website",
+        "Twitter": "twitterUsername"
+    },
     "username_claimed": "blue"
   },
   "devRant": {
@@ -805,7 +833,14 @@
     "isNSFW": true,
     "url": "https://e621.net/users/{}",
     "urlMain": "https://e621.net",
-     "username_claimed": "blue"
+    "fields": {
+        "Name": "profile-name",
+        "About": "profile-readmore",
+        "Ban": "profile-ban",
+        "Comments": "profile-line-number",
+        "Uploads": "profile-sample-links"
+    },
+    "username_claimed": "blue"
   },
   "eGPU": {
     "errorType": "message",
@@ -985,6 +1020,9 @@
     ],
     "url": "https://www.furaffinity.net/user/{}",
     "urlMain": "https://www.furaffinity.net",
+    "fields": {
+        "About": "userpage-profile"
+    },
     "username_claimed": "jesus"
   },
   "GaiaOnline": {
@@ -1307,13 +1345,6 @@
     "urlMain":"https://ifunny.co/",
     "username_claimed":"agua"
   },
-  "intensedebate": {
-    "errorType": "message",
-    "errorMsg": "Your username is invalid",
-    "url": "https://www.intensedebate.com/people/{}",
-    "urlMain": "https://www.intensedebate.com/",
-    "username_claimed": "blue"
-  },
   "Image Fap": {
     "errorType": "message",
     "errorMsg": "Not found",
@@ -1544,6 +1575,10 @@
     "errorType": "status_code",
     "url": "https://last.fm/user/{}",
     "urlMain": "https://last.fm/",
+    "fields": {
+        "Name": "header-title-display-name",
+        "Creation Date": "header-scrobble-since"
+    },
     "username_claimed": "blue"
   },
   "Laracast": {
@@ -1629,6 +1664,14 @@
     "regexCheck": "^[\\w\\.]{2,30}$",
     "url": "https://linktr.ee/{}",
     "urlMain": "https://linktr.ee/",
+    "fields": {
+        "Active": "isActive",
+        "Verified": "isProfileVerified",
+        "Email verified": "isEmailVerified",
+        "Tier": "account"
+    },
+    "dumpUrls": "LinkClickTriggerLink",
+    "urlAttr": "href",
     "username_claimed": "anne"
   },
   "LinuxFR.org": {
@@ -1881,6 +1924,11 @@
     "regexCheck": "^[a-zA-Z][a-zA-Z0-9_-]*$",
     "url": "https://{}.newgrounds.com",
     "urlMain": "https://newgrounds.com",
+    "fields": {
+        "Description": "general fill-space text-content",
+        "Info": "fa fa-user",
+        "Joined": "fa fa-calendar"
+    },
     "username_claimed": "blue"
   },
   "NICommunityForum": {
@@ -2042,6 +2090,14 @@
     },
     "url": "https://www.paypal.com/paypalme/{}",
     "urlMain": "https://www.paypal.com/",
+    "fields": {
+        "Name": "displayName",
+        "Email": "displayEmail",
+        "Phone": "displayMobilePhone",
+        "Address": "displayAddress",
+        "Currency": "primaryCurrencyCode",
+        "Active": "isProfileStatusActive"
+    },
     "username_claimed": "pylapp"
   },
   "PCGamer": {
@@ -2132,6 +2188,9 @@
     "url": "https://www.pinterest.com/{}/",
     "urlProbe": "https://www.pinterest.com/oembed.json?url=https://www.pinterest.com/{}/",
     "urlMain": "https://www.pinterest.com/",
+    "fields": {
+        "Name": "author_name"
+    },
     "username_claimed": "blue"
   },
   "pixelfed.social": {
@@ -2314,14 +2373,20 @@
     "username_claimed": "blue"
   },
   "Reddit": {
-    "errorMsg": "the page you requested does not exist",
+    "errorMsg": "Sorry, nobody on Reddit goes by that name.",
     "errorType": "message",
     "headers": {
-      "accept-language": "en-US,en;q=0.9"
+      "accept-language": "en-US,en;q=0.9",
+      "Cookie": "over18=1;"
     },
     "url": "https://reddit.com/user/{}",
     "urlMain": "https://www.reddit.com/",
-    "urlProbe": "https://old.reddit.com/user/{}",
+    "urlProbe": "https://www.reddit.com/u/{}",
+    "fields": {
+        "Name": "profile-display-name",
+        "Karma": "karma-number",
+        "Creation Date": "cake-day"
+    },
     "username_claimed": "blue"
   },
   "Realmeye": {
@@ -2500,6 +2565,9 @@
     "request_method": "GET",
     "url": "https://www.snapchat.com/add/{}",
     "urlMain": "https://www.snapchat.com",
+    "fields": {
+        "Name": "displayName"
+    },
     "username_claimed": "teamsnapchat"
   },
   "social.tchncs.de": {
@@ -2611,11 +2679,18 @@
     "urlMain": "https://steamcommunity.com/",
     "username_claimed": "blue"
   },
-  "Steam Community (User)": {
+  "Steam": {
     "errorMsg": "The specified profile could not be found",
     "errorType": "message",
     "url": "https://steamcommunity.com/id/{}/",
     "urlMain": "https://steamcommunity.com/",
+    "fields": {
+        "Name": "actual_persona_name",
+        "About": "profile_summary",
+        "Location": "profile_flag"
+    },
+    "dumpUrls": "bb_link",
+    "urlAttr": "href",
     "username_claimed": "blue"
   },
   "Steam Community (Search)": {
@@ -2664,9 +2739,18 @@
   "Tiktok": {
     "errorMsg": "\"statusCode\":10221",
     "errorType": "message",
-    "regexCheck": "^[a-zA-Z0-9_]{2,24}$",
+    "regexCheck": "^[a-zA-Z0-9_.]{2,24}$",
     "url": "https://www.tiktok.com/@{}",
     "urlMain": "https://www.tiktok.com/",
+    "fields": {
+        "Name": "nickname",
+        "Description": "signature",
+        "Creation Date": "createTime",
+        "Followers": "followerCount",
+        "Following": "followingCount",
+        "Videos": "videoCount"
+    },
+    "dumpUrls": "link",
     "username_claimed": "tiktok"
   },
   "Telegram": {
@@ -2741,6 +2825,9 @@
     "errorType": "status_code",
     "url": "https://toyhou.se/{}",
     "urlMain": "https://toyhou.se/",
+    "fields": {
+        "Description": "profile-content-section"
+    },
     "username_claimed": "blue"
   },
   "TRAKTRAIN": {
@@ -2827,7 +2914,14 @@
     "regexCheck": "^[a-zA-Z0-9_]{1,32}$",
     "url": "https://x.com/{}",
     "urlMain": "https://x.com/",
-    "urlProbe": "http://5.78.115.92:8081/{}",
+    "urlProbe": "https://nitter.net/{}",
+    "fields": {
+        "Name": "profile-card-fullname",
+        "Bio": "profile-bio",
+        "Joined": "profile-joindate",
+        "Tweets": "profile-stat-num"
+    },
+    "browserOnly": true,
     "username_claimed": "blue"
   },
   "Typeracer": {
@@ -2879,6 +2973,9 @@
     "url": "https://account.venmo.com/u/{}",
     "urlMain": "https://venmo.com/",
     "urlProbe": "https://test1.venmo.com/u/{}",
+    "fields": {
+        "Name": "profileInfo_username"
+    },
     "username_claimed": "jenny"
   },
   "Vero": {
@@ -3104,6 +3201,12 @@
     "headers": {
         "User-Agent": ""
     },
+    "fields": {
+        "Nickname": "pageTitle",
+        "Description": "description",
+        "Subscribers": "enableTruncation\":true}]},{\"metadataParts\":[{\"text\":{\"content"
+    },
+    "dumpUrls": "url",
     "username_claimed": "youtube"
   },
   "znanylekarz.pl": {
