@@ -844,7 +844,10 @@
   },
   "eGPU": {
     "errorType": "message",
-    "errorMsg": "Access to this resource on the server is denied!",
+    "errorMsg": [
+        "Access to this resource on the server is denied!",
+        "The resource requested could not be found on this server!"
+    ],
     "url": "https://egpu.io/forums/profile/{}/",
     "urlMain": "https://egpu.io/",
     "username_claimed": "blue"
@@ -1216,7 +1219,10 @@
   },
   "HackenProof (Hackers)": {
     "errorType": "message",
-    "errorMsg": "The server encountered an unexpected condition that prevented it from fulfilling",
+    "errorMsg": [
+        "The server encountered an unexpected condition that prevented it from fulfilling",
+        "message\":\"internal server error"
+    ],
     "regexCheck": "^[\\w-]{,34}$",
     "url": "https://hackenproof.com/hackers/{}",
     "urlMain": "https://hackenproof.com/",

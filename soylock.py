@@ -178,7 +178,9 @@ async def soylock(
         '<noscript><p><b>JavaScript is required to access this page.</b></p></noscript>', # 2026-06-08 MusicBrainz
         '<head><title>415 Unsupported Media Type</title></head>',  # 2026-06-08 OurDJTalk
         'https://assets.guns.lol/wasm/gpp_gunslol.js', # 2026-06-09 guns.lol
-        '<title>Reddit - Please wait for verification</title>' # 2026-06-10 Reddit
+        '<title>Reddit - Please wait for verification</title>', # 2026-06-10 Reddit
+        'This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.', # 2026-06-14 Cloudflare
+        'You\'ve been blocked by network security.' # 2026-06-14 Reddit
     ]
 
     RegulationHitMsgs = [
