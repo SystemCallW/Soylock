@@ -172,7 +172,7 @@ class QueryNotifyPrint(QueryNotify):
     def versionAlert(self, version):
         print(f"{Fore.GREEN}New update available: {Fore.LIGHTGREEN_EX}{version} {Fore.GREEN}({Fore.LIGHTWHITE_EX}https://github.com/SystemCallW/Soylock{Fore.GREEN})")
 
-    def start(self, message):
+    def start(self, username, message="", new_line=False):
         """Notify Start.
 
         Will print the title to the standard output.
@@ -187,11 +187,13 @@ class QueryNotifyPrint(QueryNotify):
         """
         title = "Checking username"
 
+        if new_line:
+            print('\r')
         print(Style.BRIGHT + Fore.GREEN + "[" +
               Fore.YELLOW + "*" +
               Fore.GREEN + f"] {title}" +
-              Fore.WHITE + f" {message}" +
-              Fore.GREEN + " on:")
+              Fore.WHITE + f" {username}" +
+              Fore.GREEN + f" on{message}:")
         # An empty line between first line and the result(more clear output)
         print('\r')
 
@@ -363,6 +365,13 @@ class QueryNotifyPrint(QueryNotify):
 
         return
 
+    def blocked(self, site, message):
+         print(Style.BRIGHT + Fore.WHITE + "[" +
+            Fore.RED + "!" +
+            Fore.WHITE + f"] {site} " +
+            Fore.RED + message +
+            Fore.YELLOW + " (proxy may help)" + Style.RESET_ALL)
+
     def finish(self, message="The processing has been finished."):
         """Notify Start.
         Will print the last line to the standard output.
@@ -380,22 +389,19 @@ class QueryNotifyPrint(QueryNotify):
               Fore.YELLOW + "*" +
               Fore.GREEN + "] Search completed with" +
               Fore.WHITE + f" {NumberOfResults} " +
-              Fore.GREEN + "results" + Style.RESET_ALL
-              )
+              Fore.GREEN + "results" + Style.RESET_ALL)
         if NumberOfWAF != 0:
             print(Style.BRIGHT + Fore.WHITE + "[" +
                   Fore.RED + "-" +
                   Fore.WHITE + f"] {NumberOfWAF} " +
                   Fore.RED + "Site got WAF blocked" +
-                  Fore.YELLOW + " (a clean IP may help)" + Style.RESET_ALL
-                  )
+                  Fore.YELLOW + " (a clean IP may help)" + Style.RESET_ALL)
         if NumberOfBlock != 0:
             print(Style.BRIGHT + Fore.WHITE + "[" +
                   Fore.RED + "-" +
                   Fore.WHITE + f"] {NumberOfBlock} " +
                   Fore.RED + "Site got country blocked"  +
-                  Fore.YELLOW + " (proxy may help)" + Style.RESET_ALL
-                  )
+                  Fore.YELLOW + " (proxy may help)" + Style.RESET_ALL)
 
     def __str__(self):
         """Convert Object To String.

@@ -1,4 +1,28 @@
+Changes: 0.19.0 (beta)
+New Feature:
+- Archive mode
+
+Added:
+- Rentry
+
+Fixed:
+- DigitalSpy
+
+Removed:
+- RocketTube (dead)
+
+Changes: 0.18.0 (beta)
+New Feature:
+- Data parsing
+
+Fixed:
+- eGPU
+- HackenProof
+
 Changes: 0.17.0 (beta)
+New Feature:
+- Browser mode
+
 Added:
 - curseforge
 - intensedebate

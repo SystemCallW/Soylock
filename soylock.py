@@ -149,6 +149,7 @@ async def soylock(
     dump_response: bool = False,
     proxy: Optional[str] = None,
     timeout: int = 60,
+    disable_archive: bool = False,
 ):
     """Run Soylock Analysis.
 
@@ -186,11 +187,8 @@ async def soylock(
     RegulationHitMsgs = [
         '<link rel="stylesheet" href="/dist/age-wall.min.',  # 2025-11-11 Pornhub / YouPorn / RedTube
         'Although this platform is, and has always been, for adults only, as it appears you are accessing the platform from',  # 2025-11-11 ChaturBate
-        'We comply with laws across 19 states that mandate content controls and age verification measures.',  # 2025-11-11 RocketTube
-        'Broke Straight Boys is the original Gay For Pay site. Watch over 2743 exclusive scenes of real straight boys doing whatever it takes to pay the bills - Highest Rated - Page 1',  # 2025-11-11 RocketTube alternative
         'Visitors from United Kingdom must verify their age to access this site.',  # 2025-11-11 BongaCams
         'To continue, we are required to verify that you are 18 or older, in line with the UK Online Safety Act.',  # 2025-11-11 LushStories / Pornhub (A) / YouPorn (A) / RedTube (A)
-        'https://cdn5.vscdns.com/assets/min/css/age-verification/age-verification', # 2026-06-08 RocketTube
         'We\'ve had to temporarily block access to the APClips preview area from your state.', # 2026-06-08 APClips
         'Youporn is not currently accepting new account registrations in your region' # 2026-06-08 Youporn
     ]
@@ -585,16 +583,12 @@ async def soylock(
     def _normalize_found_url(candidate_url, url_filter):
         if ("https://www.youtube.com/redirect?" in candidate_url or "https://steamcommunity.com/linkfilter" in candidate_url):
             return urllib.parse.unquote(candidate_url.split("=")[-1])
-
+        if "sf16-va.tiktokcdn.com" in candidate_url:
+            return None
         if url_filter == "url":
             return None
-
         if "http" in candidate_url:
-            return codecs.decode(
-                urllib.parse.unquote(candidate_url),
-                "unicode_escape",
-            )
-
+            return codecs.decode(urllib.parse.unquote(candidate_url), "unicode_escape")
         if "/cdn-cgi/l/email-protection" in candidate_url:
             return "Found javascript protected email (you can copy it from browser)"
 
@@ -763,6 +757,45 @@ async def soylock(
     for completed in asyncio.as_completed(tasks):
         social_network, results_site = await completed
         results_total[social_network] = results_site
+
+    session = tls_client.Session(
+        client_identifier="chrome_138",
+        random_tls_extension_order=True
+    )
+
+    if not disable_archive:
+        query_notify.start(username, " Archive", True)
+        for social_network, net_info in site_data.items():
+            if net_info.get("archiveUrls"):
+                archive_urls = net_info.get("archiveUrls")
+                url_list = []
+                if isinstance(archive_urls, str):
+                    url_list.append(archive_urls)
+                else:
+                    url_list = archive_urls
+
+                for archive_url in url_list:
+                    url_probe = interpolate_string(archive_url, username)
+                    response = session.get(f"https://archive.org/wayback/available?url={url_probe}/")
+                    response_text = _safe_attr(response, "text", "")
+                    response_time = _safe_attr(response, "elapsed")
+                    response_headers = _safe_attr(response, "headers", {})
+
+                    if "429 Too Many Requests" in response_text:
+                        query_notify.blocked("Archive.org", "Too Many Requests")
+                        break
+                    if "archived_snapshots\": {}" not in response_text:
+                        result = QueryResult(
+                            username=username,
+                            site_name=social_network,
+                            site_url_user=interpolate_string(f"https://web.archive.org/web/*/{archive_url}/", username),
+                            status=QueryStatus.CLAIMED,
+                            query_time=response_time,
+                        )
+
+                        async with notify_lock:
+                            query_notify.update(result)
+                        break
 
     return results_total
 
@@ -968,11 +1001,19 @@ async def main():
     )
 
     parser.add_argument(
-        "--browser-mode",
+        "--disable-browser",
         action="store_true",
-        dest="browser_mode",
+        dest="disable_browser",
         default=False,
-        help="Uses chromium to solve cloudflare turnstile.",
+        help="Disable the chromium based cloudflare interstitial captcha solver.",
+    )
+
+    parser.add_argument(
+        "--disable-archive",
+        action="store_true",
+        dest="disable_archive",
+        default=False,
+        help="Disable the archive.org search.",
     )
 
     parser.add_argument(
@@ -1093,9 +1134,6 @@ async def main():
 
     query_notify.splash()
 
-    if not args.browser_mode:
-        print("For more and accurate results use --browser-mode")
-
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
     }
@@ -1112,7 +1150,7 @@ async def main():
     # ── Initialize browser engine if browser-mode is enabled ──
     engine = None
     session = None
-    if args.browser_mode:
+    if not args.disable_browser:
         max_workers = args.tabs if args.tabs else (5 if len(site_data) >= 20 else len(site_data))
         engine = BrowserEngine(
             max_workers=max_workers,
@@ -1141,6 +1179,7 @@ async def main():
                 dump_response=args.dump_response,
                 proxy=args.proxy,
                 timeout=args.timeout,
+                disable_archive=args.disable_archive
             )
 
             if args.output:

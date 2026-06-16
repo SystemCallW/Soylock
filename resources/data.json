@@ -78,6 +78,7 @@
     "regexCheck": "^[A-Za-z0-9-]{2,32}$",
     "url": "https://allmylinks.com/{}",
     "urlMain": "https://allmylinks.com/",
+    "archiveUrls": "https://allmylinks.com/{}",
     "username_claimed": "blue"
   },
   "AniWorld": {
@@ -198,6 +199,7 @@
     "errorType": "status_code",
     "url": "https://baraag.net/@{}",
     "urlMain": "https:///baraag.net/",
+    "archiveUrls": "https://baraag.net/@{}",
     "username_claimed": "blue"
   },
   "Bandcamp": {
@@ -283,6 +285,7 @@
     "url": "https://bsky.app/profile/{}.bsky.social",
     "urlProbe": "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle={}.bsky.social",
     "urlMain": "https://bsky.app/",
+    "archiveUrls": "https://bsky.app/profile/{}.bsky.social",
     "username_claimed": "mcuban"
   },
   "BoardGameGeek": {
@@ -381,6 +384,7 @@
         "n05"
     ],
     "urlAttr": "href",
+    "archiveUrls": "https://{}.carrd.co",
     "username_claimed": "blue"
   },
   "Career.habr": {
@@ -400,6 +404,7 @@
         "Plan": "rate_plan",
         "Country Code": "country_code"
     },
+    "archiveUrls": "https://cash.app/${}",
     "username_claimed": "hotdiggitydog",
     "username_unclaimed": "HelloItsADell"
   },
@@ -729,6 +734,10 @@
         "Website": "website",
         "Twitter": "twitterUsername"
     },
+    "archiveUrls": [
+        "https://{}.deviantart.com",
+        "https://deviantart.com/{}"
+    ],
     "username_claimed": "blue"
   },
   "devRant": {
@@ -739,8 +748,7 @@
     "username_claimed": "blue"
   },
   "DigitalSpy": {
-      "errorType": "message",
-      "errorMsg": "The page you were looking for could not be found.",
+      "errorType": "status_code",
       "url": "https://forums.digitalspy.com/profile/{}",
       "urlMain": "https://forums.digitalspy.com/",
       "username_claimed": "blue",
@@ -840,6 +848,7 @@
         "Comments": "profile-line-number",
         "Uploads": "profile-sample-links"
     },
+    "archiveUrls": "https://e621.net/users/{}",
     "username_claimed": "blue"
   },
   "eGPU": {
@@ -902,6 +911,7 @@
     "errorType": "status_code",
     "url": "https://community.fandom.com/wiki/User:{}",
     "urlMain": "https://community.fandom.com/",
+    "archiveUrls": "https://community.fandom.com/wiki/User:{}",
     "username_claimed": "Jungypoo"
   },
   "Fanpop": {
@@ -1026,6 +1036,7 @@
     "fields": {
         "About": "userpage-profile"
     },
+    "archiveUrls": "https://www.furaffinity.net/user/{}",
     "username_claimed": "jesus"
   },
   "GaiaOnline": {
@@ -1039,12 +1050,14 @@
     "errorType": "status_code",
     "url": "https://www.gamespot.com/profile/{}/",
     "urlMain": "https://www.gamespot.com/",
+    "archiveUrls": "https://www.gamespot.com/profile/{}/",
     "username_claimed": "blue"
   },
   "GameFAQs": {
     "errorType": "status_code",
     "url": "https://gamefaqs.gamespot.com/community/{}",
     "urlMain": "https://gamefaqs.gamespot.com",
+    "archiveUrls": "https://gamefaqs.gamespot.com/community/{}",
     "username_claimed": "blue"
   },
   "Genius (Artists)": {
@@ -1097,6 +1110,7 @@
     "regexCheck": "^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$",
     "url": "https://www.github.com/{}",
     "urlMain": "https://www.github.com/",
+    "archiveUrls": "https://www.github.com/{}",
     "username_claimed": "blue"
   },
   "GitLab": {
@@ -1165,6 +1179,7 @@
     "errorMsg": "Username not found",
     "url": "https://guns.lol/{}",
     "urlMain": "https://guns.lol",
+    "archiveUrls": "https://guns.lol/{}",
     "username_claimed": "example"
   },
   "Gumroad": {
@@ -1383,6 +1398,7 @@
     "errorMsg": "No users to list...",
     "url": "https://inkbunny.net/{}",
     "urlMain": "https://inkbunny.net/",
+    "archiveUrls": "https://inkbunny.net/{}",
     "username_claimed": "blue"
   },
   "irecommend": {
@@ -1678,6 +1694,7 @@
     },
     "dumpUrls": "LinkClickTriggerLink",
     "urlAttr": "href",
+    "archiveUrls": "https://linktr.ee/{}",
     "username_claimed": "anne"
   },
   "LinuxFR.org": {
@@ -1743,12 +1760,14 @@
     "errorType": "status_code",
     "url": "https://mastodon.social/@{}",
     "urlMain": "https://chaos.social/",
+    "archiveUrls": "https://mastodon.social/@{}",
     "username_claimed": "Gargron"
   },
   "mastodon.xyz": {
     "errorType": "status_code",
     "url": "https://mastodon.xyz/@{}",
     "urlMain": "https://mastodon.xyz/",
+    "archiveUrls": "https://mastodon.xyz/@{}",
     "username_claimed": "TheKinrar"
   },
   "Medium": {
@@ -1847,12 +1866,14 @@
     "errorType": "status_code",
     "url": "https://mstdn.io/@{}",
     "urlMain": "https://mstdn.io/",
+    "archiveUrls": "https://mstdn.io/@{}",
     "username_claimed": "blue"
   },
   "mstdn.social": {
     "errorType": "status_code",
     "url": "https://mstdn.social/@{}",
     "urlMain": "https://mstdn.social/",
+    "archiveUrls": "https://mstdn.social/@{}",
     "username_claimed": "MagicLike"
   },
   "MuseScore": {
@@ -1935,6 +1956,7 @@
         "Info": "fa fa-user",
         "Joined": "fa fa-calendar"
     },
+    "archiveUrls": "https://{}.newgrounds.com",
     "username_claimed": "blue"
   },
   "NICommunityForum": {
@@ -2086,6 +2108,7 @@
     "errorType": "status_code",
     "url": "https://pawoo.net/@{}",
     "urlMain": "https:///pawoo.net/",
+    "archiveUrls": "https://pawoo.net/@{}",
     "username_claimed": "blue"
   },
   "PayPal.me": {
@@ -2104,6 +2127,7 @@
         "Currency": "primaryCurrencyCode",
         "Active": "isProfileStatusActive"
     },
+    "archiveUrls": "https://www.paypal.com/paypalme/{}",
     "username_claimed": "pylapp"
   },
   "PCGamer": {
@@ -2308,6 +2332,7 @@
     "errorType": "status_code",
     "url": "https://pronouns.page/@{}",
     "urlMain": "https://pronouns.page/",
+    "archiveUrls": "https://pronouns.page/@{}",
     "username_claimed": "andrea"
   },
   "Pronouny": {
@@ -2379,8 +2404,8 @@
     "username_claimed": "blue"
   },
   "Reddit": {
-    "errorMsg": "Sorry, nobody on Reddit goes by that name.",
     "errorType": "message",
+    "errorMsg": "Sorry, nobody on Reddit goes by that name.",
     "headers": {
       "accept-language": "en-US,en;q=0.9",
       "Cookie": "over18=1;"
@@ -2393,11 +2418,23 @@
         "Karma": "karma-number",
         "Creation Date": "cake-day"
     },
+    "archiveUrls": [
+        "https://www.reddit.com/u/{}",
+        "https://old.reddit.com/user/{}"
+    ],
+    "username_claimed": "blue"
+  },
+  "Reddit Archive": {
+    "errorType": "message",
+    "errorMsg": "{\"data\":[]}",
+    "url": "https://arctic-shift.photon-reddit.com/search?fun=comments_search&author={}&limit=10&sort=desc",
+    "urlMain": "https://arctic-shift.photon-reddit.com/",
+    "urlProbe": "https://arctic-shift.photon-reddit.com/api/comments/search?author={}&limit=10&sort=desc&md2html=true&meta-app=search-tool",
     "username_claimed": "blue"
   },
   "Realmeye": {
-    "errorMsg": "Sorry, but we either:",
     "errorType": "message",
+    "errorMsg": "Sorry, but we either:",
     "url": "https://www.realmeye.com/player/{}",
     "urlMain": "https://www.realmeye.com/",
     "username_claimed": "rotmg"
@@ -2408,9 +2445,15 @@
     "urlMain": "https://www.reisefrage.net/",
     "username_claimed": "reisefrage"
   },
+  "Rentry": {
+    "errorType": "status_code",
+    "url": "https://rentry.co/{}",
+    "urlMain": "https://rentry.co/",
+    "username_claimed": "blue"
+  },
   "ReverbNation": {
-    "errorMsg": "Sorry, we couldn't find that page",
     "errorType": "message",
+    "errorMsg": "Sorry, we couldn't find that page",
     "url": "https://www.reverbnation.com/{}",
     "urlMain": "https://www.reverbnation.com/",
     "username_claimed": "blue"
@@ -2420,13 +2463,6 @@
     "url": "https://www.roblox.com/user.aspx?username={}",
     "urlMain": "https://www.roblox.com/",
     "username_claimed": "bluewolfekiller"
-  },
-  "RocketTube": {
-    "errorType": "status_code",
-    "isNSFW": true,
-    "url": "https://www.rockettube.com/{}",
-    "urlMain": "https://www.rockettube.com/",
-    "username_claimed": "Tatteddick5600"
   },
   "RoyalCams": {
     "errorType": "response_url",
@@ -2580,6 +2616,7 @@
     "errorType": "status_code",
     "url": "https://social.tchncs.de/@{}",
     "urlMain": "https://social.tchncs.de/",
+    "archiveUrls": "https://social.tchncs.de/@{}",
     "username_claimed": "Milan"
   },
   "SOOP": {
@@ -2697,6 +2734,7 @@
     },
     "dumpUrls": "bb_link",
     "urlAttr": "href",
+    "archiveUrls": "https://steamcommunity.com/id/{}",
     "username_claimed": "blue"
   },
   "Steam Community (Search)": {
@@ -2714,6 +2752,7 @@
     "errorType": "status_code",
     "url": "https://{}.straw.page",
     "urlMain": "https://straw.page/",
+    "archiveUrls": "https://{}.straw.page",
     "username_claimed": "blue"
   },
   "SublimeForum": {
@@ -2757,6 +2796,7 @@
         "Videos": "videoCount"
     },
     "dumpUrls": "link",
+    "archiveUrls": "https://www.tiktok.com/@{}",
     "username_claimed": "tiktok"
   },
   "Telegram": {
@@ -2878,6 +2918,7 @@
     ],
     "url": "https://{}.tumblr.com/",
     "urlMain": "https://www.tumblr.com/",
+    "archiveUrls": "https://www.tumblr.com/{}",
     "username_claimed": "goku"
   },
   "Tuna": {
@@ -2888,8 +2929,8 @@
     "username_claimed": "bob"
   },
   "Trovo": {
-    "errorMsg": "Uh Ohhh...",
     "errorType": "message",
+    "errorMsg": "Uh Ohhh...",
     "url": "https://trovo.live/s/{}/",
     "urlMain": "https://trovo.live",
     "browserOnly": true,
@@ -2908,6 +2949,7 @@
     "url": "https://twitch.tv/{}",
     "urlMain": "https://twitch.tv/",
     "urlProbe": "https://sullygnome.com/channel/{}",
+    "archiveUrls": "https://twitch.tv/{}",
     "username_claimed": "blue"
   },
   "Twitter": {
@@ -2927,6 +2969,23 @@
         "Joined": "profile-joindate",
         "Tweets": "profile-stat-num"
     },
+    "archiveUrls": [
+        "https://twitter.com/{}",
+        "https://twitter.com/status/{}",
+        "https://x.com/{}",
+        "https://x.com/status/{}"
+    ],
+    "browserOnly": true,
+    "username_claimed": "blue"
+  },
+  "Twitter Archive": {
+    "errorType": "message",
+    "errorMsg": [
+        "<span style=\"font-size: 18px;font-weight: 400;color: #847577;margin-bottom: 30px;line-height: 24px;display: block;\"></span>",
+        "<div class=\"errror-404\">"
+    ],
+    "url": "https://twstalker.com/{}",
+    "urlMain": "https://twstalker.com",
     "browserOnly": true,
     "username_claimed": "blue"
   },
@@ -3067,6 +3126,7 @@
     "url": "https://www.wattpad.com/user/{}",
     "urlMain": "https://www.wattpad.com/",
     "urlProbe": "https://www.wattpad.com/api/v3/users/{}/",
+    "archiveUrls": "https://www.wattpad.com/user/{}",
     "username_claimed": "Dogstho7951"
   },
   "WebNode": {
@@ -3213,6 +3273,7 @@
         "Subscribers": "enableTruncation\":true}]},{\"metadataParts\":[{\"text\":{\"content"
     },
     "dumpUrls": "url",
+    "archiveUrls": "https://www.youtube.com/@{}",
     "username_claimed": "youtube"
   },
   "znanylekarz.pl": {
