@@ -1,14 +1,5 @@
 {
   "$schema": "data.schema.json",
-  "1337x": {
-    "errorType": "message",
-    "errorMsg": "Bad Username.",
-    "regexCheck": "^[A-Za-z0-9]{4,12}$",
-    "url": "https://www.1337x.to/user/{}/",
-    "urlMain": "https://www.1337x.to/",
-    "browserOnly": true,
-    "username_claimed": "FitGirl"
-  },
   "7Cups": {
     "errorType": "status_code",
     "url": "https://www.7cups.com/@{}",

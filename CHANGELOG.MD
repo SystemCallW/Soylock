@@ -9,6 +9,7 @@ Fixed:
 - DigitalSpy
 
 Removed:
+- 1337x
 - RocketTube (dead)
 
 Changes: 0.18.0 (beta)
