@@ -5,6 +5,9 @@ New Feature:
 Added:
 - Rentry
 
+Improved:
+- Bluesky (by trinny)
+
 Fixed:
 - DigitalSpy
 

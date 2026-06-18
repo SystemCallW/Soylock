@@ -273,8 +273,16 @@
   },
   "Bluesky": {
     "errorType": "status_code",
+    "fields": {
+      "Name": "displayName",
+      "Followers": "followersCount",
+      "Posts": "postsCount",
+      "Created": "createdAt",
+      "Avatar": "avatar",
+      "Description":"description"
+    },
     "url": "https://bsky.app/profile/{}.bsky.social",
-    "urlProbe": "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle={}.bsky.social",
+    "urlProbe": "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor={}.bsky.social",
     "urlMain": "https://bsky.app/",
     "archiveUrls": "https://bsky.app/profile/{}.bsky.social",
     "username_claimed": "mcuban"
