@@ -1,3 +1,10 @@
+Changes: 0.19.1 (beta)
+New Feature:
+- Breach.vip lookup
+
+Fixed:
+- interpals
+
 Changes: 0.19.0 (beta)
 New Feature:
 - Archive mode
@@ -6,7 +13,7 @@ Added:
 - Rentry
 
 Improved:
-- Bluesky (by trinny)
+- Bluesky (made by trinny)
 
 Fixed:
 - DigitalSpy

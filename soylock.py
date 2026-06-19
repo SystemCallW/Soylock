@@ -20,6 +20,7 @@ import asyncio
 import requests
 import urllib.parse
 import codecs
+import collections
 from parser import Parser
 from datetime import datetime
 from dataclasses import dataclass
@@ -557,22 +558,6 @@ async def soylock(
 
         return Parser(_decode_text(result.response_text))
 
-    def _extract_named_fields(parser, net_info):
-        found_fields = {}
-
-        for field, path in (net_info.get("fields") or {}).items():
-            found = parser.find(path)
-
-            if found is None or found == "":
-                continue
-
-            if isinstance(found, int) and "date" in field.lower():
-                found = datetime.fromtimestamp(found).strftime("%Y-%m-%d %H:%M:%S")
-
-            found_fields[field] = found
-
-        return found_fields
-
     def _normalize_dump_urls(dump_urls):
         if dump_urls is None:
             return []
@@ -594,51 +579,113 @@ async def soylock(
 
         return None
 
-    def _extract_dump_urls(parser, net_info, target_url):
-        url_filters = _normalize_dump_urls(net_info.get("dumpUrls"))
-
-        if not url_filters:
-            return {}
-
-        url_attr = net_info.get("urlAttr")
-        urls = []
-
-        for url_filter in url_filters:
-            if url_attr:
-                urls.extend(parser.find_all(url_filter, strategy="html", html_attr=url_attr))
+    def _update_fields(dictionary, element):
+        for name, value in element.items():
+            if isinstance(value, collections.abc.Mapping):
+                dictionary[name] = _update_fields(dictionary.get(name, {}), value)
             else:
-                urls.extend(parser.find_all(url_filter))
+                dictionary[name] = value
+        return dictionary
 
-        found_urls = []
-
-        for candidate_url in urls:
-            if candidate_url is None or target_url in candidate_url:
-                continue
-
-            for url_filter in url_filters:
-                normalized_url = _normalize_found_url(candidate_url, url_filter)
-                if normalized_url:
-                    found_urls.append(normalized_url)
-
-        if not found_urls:
-            return {}
-
-        unique_urls = list(dict.fromkeys(found_urls))
-
-        return {"Urls": "\n".join(unique_urls) + " (a chunk of the links may be stripped)"}
+    def _as_list(value):
+        if isinstance(value, (list, tuple, set)):
+            return list(value)
+        return [value]
 
     def _extract_found_fields(result, net_info, url):
         if result.query_status != QueryStatus.CLAIMED:
             return {}
 
-        parser = _parser_for_result(result, net_info)
+        if net_info.get("fields") is None and not net_info.get("dumpUrls"):
+            return None
 
+        parser = Parser(_decode_text(result.response_text))
         if parser is None:
             return {}
 
         found_fields = {}
-        found_fields.update(_extract_named_fields(parser, net_info))
-        found_fields.update(_extract_dump_urls(parser, net_info, url))
+
+        for field, path in (net_info.get("fields") or {}).items():
+            if isinstance(path, dict):
+                found = parser.find(field, as_dict=True)
+
+                if found is None:
+                    continue
+
+                sub_parser = Parser(_decode_text(str(found or "")))
+
+                sub_paths = []
+                for possible_paths in path.values():
+                    sub_paths.extend(_as_list(possible_paths))
+
+                found_rows = sub_parser.find_all(sub_paths)
+
+                for index, row in enumerate(found_rows):
+                    update_values = {}
+
+                    for output_field, possible_paths in path.items():
+                        if output_field in update_values:
+                            continue
+
+                        for sub_path in _as_list(possible_paths):
+                            value = row.get(sub_path)
+
+                            if value is None or value == "":
+                                continue
+
+                            if (isinstance(value, int) or (isinstance(value, str) and value.isdigit())) and "date" in output_field.lower():
+                                value = datetime.fromtimestamp(int(value)).strftime("%Y-%m-%d %H:%M:%S")
+
+                            update_values[output_field] = value
+                            break
+                    if update_values:
+                        update = {
+                            str(index): update_values
+                        }
+                        _update_fields(found_fields, update)
+            else:
+                found = parser.find(path)
+                if found is None or found == "":
+                    continue
+                if isinstance(found, int) and "date" in field.lower():
+                    found = datetime.fromtimestamp(found).strftime("%Y-%m-%d %H:%M:%S")
+
+                found_fields[field] = found
+
+        url_filters = _normalize_dump_urls(net_info.get("dumpUrls"))
+        if url_filters:
+            url_attr = net_info.get("urlAttr")
+            urls = []
+
+            for url_filter in url_filters:
+                if url_attr:
+                    urls.extend(parser.find_all(url_filter, strategy="html", html_attr=url_attr))
+                else:
+                    urls.extend(parser.find_all(url_filter))
+
+            found_urls = []
+            for candidate_url in urls:
+                if candidate_url is None or url in candidate_url:
+                    continue
+
+                for url_filter in url_filters:
+                    normalized_url = ""
+                    if ("https://www.youtube.com/redirect?" in candidate_url or "https://steamcommunity.com/linkfilter" in candidate_url):
+                        normalized_url = urllib.parse.unquote(candidate_url.split("=")[-1])
+                    if "sf16-va.tiktokcdn.com" in candidate_url:
+                        continue
+                    if url_filter == "url":
+                        continue
+                    if "http" in candidate_url:
+                        normalized_url = codecs.decode(urllib.parse.unquote(candidate_url), "unicode_escape")
+                    if "/cdn-cgi/l/email-protection" in candidate_url:
+                        normalized_url = "Found javascript protected email (you can copy it from browser)"
+                    if normalized_url:
+                        found_urls.append(normalized_url)
+
+            if found_urls:
+                unique_urls = list(dict.fromkeys(found_urls))
+                found_fields["Urls"] = "\n".join(unique_urls) + " (a chunk of the links may be stripped)"
 
         return found_fields
 
@@ -765,7 +812,10 @@ async def soylock(
 
     if not disable_archive:
         query_notify.start(username, " Archive", True)
+        blocked = False
         for social_network, net_info in site_data.items():
+            if blocked:
+                break
             if net_info.get("archiveUrls"):
                 archive_urls = net_info.get("archiveUrls")
                 url_list = []
@@ -783,6 +833,7 @@ async def soylock(
 
                     if "429 Too Many Requests" in response_text:
                         query_notify.blocked("Archive.org", "Too Many Requests")
+                        blocked = True
                         break
                     if "archived_snapshots\": {}" not in response_text:
                         result = QueryResult(

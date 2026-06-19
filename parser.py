@@ -1,9 +1,12 @@
 import re
 import html
-from typing import Optional, List, Union
+import json
+import ast
+from typing import Optional, List, Union, Dict, Any
 from bs4 import BeautifulSoup, Tag
 
-JSONValue = Union[str, int, float, bool, None]
+JSONScalar = Union[str, int, float, bool, None]
+JSONValue = Union[JSONScalar, Dict[str, Any], List[Any]]
 
 class Parser:
 
@@ -23,7 +26,12 @@ class Parser:
         self.raw = html_blob
         self.soup = BeautifulSoup(html_blob, parser)
 
-    def find(self, field_name: str, strategy: str = "auto", html_attr: Optional[str] = None) -> Optional[JSONValue]:
+    def find(self, field_name: str, strategy: str = "auto", html_attr: Optional[str] = None, as_dict: bool = False) -> Optional[JSONValue]:
+        if as_dict:
+            if strategy in ("auto", "json"):
+                return self.extract_json_container(field_name)
+            return None
+
         if strategy in ("auto", "json"):
             val = self.extract_json(field_name)
             if val is not None:
@@ -36,7 +44,12 @@ class Parser:
 
         return None
 
-    def find_all(self, field_name: str, strategy: str = "auto", html_attr: Optional[str] = None) -> List[JSONValue]:
+    def find_all(self, field_name: Union[str, List[str]], strategy: str = "auto", html_attr: Optional[str] = None) -> List[JSONValue]:
+        if isinstance(field_name, (list, tuple)):
+            if strategy in ("auto", "json"):
+                return self.extract_all_json_records(list(field_name))
+            return []
+
         results = []
 
         if strategy in ("auto", "json"):
@@ -52,6 +65,184 @@ class Parser:
 
     def extract_all_json(self, field_name: str) -> List[JSONValue]:
         return list(self.iter_json_values(field_name))
+
+    def extract_json_container(self, field_name: str) -> Optional[JSONValue]:
+        for start in self.iter_json_value_starts(field_name):
+            raw_value = self.scan_jsonish_value(start)
+            if raw_value is None:
+                continue
+
+            parsed = self.parse_jsonish_container(raw_value)
+            if parsed is not None:
+                return parsed
+
+            # If the value is JSON-like but not valid JSON, return the raw
+            # container text so a nested Parser can still regex-scan it.
+            if raw_value[:1] in ("{", "["):
+                return raw_value
+
+        return None
+
+    def extract_all_json_records(self, field_names: List[str]) -> List[Dict[str, JSONValue]]:
+        field_names = [str(field_name) for field_name in field_names]
+        if not field_names:
+            return []
+
+        rows = []
+        parsed = self.parse_jsonish_container(self.raw)
+        if parsed is not None:
+            self.collect_json_records(parsed, field_names, rows)
+
+        if rows:
+            return rows
+
+        return self.extract_all_json_records_by_scan(field_names)
+
+    def extract_all_json_records_by_scan(self, field_names: List[str]) -> List[Dict[str, JSONValue]]:
+        rows = []
+
+        for obj_text in self.iter_leaf_json_object_texts():
+            row_parser = Parser(obj_text)
+            row = {}
+
+            for field_name in field_names:
+                val = row_parser.extract_json(field_name)
+                if val is not None:
+                    row[field_name] = val
+
+            if row:
+                rows.append(row)
+
+        return rows
+
+    @classmethod
+    def collect_json_records(cls, value, field_names: List[str], rows: List[Dict[str, JSONValue]]) -> None:
+        if isinstance(value, dict):
+            row = {
+                field_name: value[field_name]
+                for field_name in field_names
+                if field_name in value
+            }
+            if row:
+                rows.append(row)
+
+            for child in value.values():
+                cls.collect_json_records(child, field_names, rows)
+
+        elif isinstance(value, list):
+            for item in value:
+                cls.collect_json_records(item, field_names, rows)
+
+    def iter_json_value_starts(self, field_name: str):
+        esc = re.escape(field_name)
+        patterns = (
+            re.compile(r'"{}"\s*:\s*'.format(esc)),
+            re.compile(r"'{}'\s*:\s*".format(esc)),
+        )
+
+        for pattern in patterns:
+            for match in pattern.finditer(self.raw):
+                yield match.end()
+
+    def scan_jsonish_value(self, start: int) -> Optional[str]:
+        i = start
+        while i < len(self.raw) and self.raw[i].isspace():
+            i += 1
+
+        if i >= len(self.raw) or self.raw[i] not in ("{", "["):
+            return None
+
+        return self.scan_balanced_container(i)
+
+    def scan_balanced_container_relaxed(self, start: int) -> Optional[str]:
+        pairs = {"{": "}", "[": "]"}
+        if start >= len(self.raw) or self.raw[start] not in pairs:
+            return None
+
+        stack = [pairs[self.raw[start]]]
+
+        for i in range(start + 1, len(self.raw)):
+            ch = self.raw[i]
+            if ch in pairs:
+                stack.append(pairs[ch])
+            elif ch in ("}", "]"):
+                if not stack or ch != stack[-1]:
+                    return None
+                stack.pop()
+                if not stack:
+                    return self.raw[start:i + 1]
+
+        return None
+
+    def scan_balanced_container(self, start: int) -> Optional[str]:
+        pairs = {"{": "}", "[": "]"}
+        if start >= len(self.raw) or self.raw[start] not in pairs:
+            return None
+
+        stack = [pairs[self.raw[start]]]
+        in_string = None
+        escaped = False
+        i = start + 1
+
+        while i < len(self.raw):
+            ch = self.raw[i]
+
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == in_string:
+                    in_string = None
+            else:
+                if ch in ("'", '"'):
+                    in_string = ch
+                elif ch in pairs:
+                    stack.append(pairs[ch])
+                elif ch in ("}", "]"):
+                    if not stack or ch != stack[-1]:
+                        return None
+                    stack.pop()
+                    if not stack:
+                        return self.raw[start:i + 1]
+
+            i += 1
+
+        return self.scan_balanced_container_relaxed(start)
+
+    def iter_leaf_json_object_texts(self):
+        for obj_text in self.iter_json_object_texts():
+            inner = obj_text[1:-1]
+            if "{" in inner or "[" in inner:
+                continue
+            yield obj_text
+
+    def iter_json_object_texts(self):
+        i = 0
+        while i < len(self.raw):
+            if self.raw[i] == "{":
+                obj_text = self.scan_balanced_container(i)
+                if obj_text is not None:
+                    yield obj_text
+                    i += len(obj_text)
+                    continue
+            i += 1
+
+    @staticmethod
+    def parse_jsonish_container(raw: str) -> Optional[JSONValue]:
+        raw = raw.strip()
+        if not raw or raw[0] not in ("{", "["):
+            return None
+
+        try:
+            return json.loads(raw)
+        except Exception:
+            pass
+
+        try:
+            return ast.literal_eval(raw)
+        except Exception:
+            return None
 
     def json_matchers(self, field_name: str):
         esc = re.escape(field_name)
@@ -253,11 +444,6 @@ class Parser:
 
     @staticmethod
     def render_text_from_icon_context(elem: Tag) -> str:
-        """
-        If the matched element is an icon/marker with no own text, return
-        the nearest parent text. Supports:
-        <p><i class="fa fa-user"></i> Age 33</p>
-        """
         own_text = Parser.render_text(elem)
         if own_text:
             return own_text

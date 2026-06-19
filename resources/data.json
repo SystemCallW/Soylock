@@ -316,6 +316,77 @@
     "urlMain": "https://community.brave.com/",
     "username_claimed": "blue"
   },
+  "Breach.vip": {
+    "errorType": "message",
+    "errorMsg": "{\"results\":[]}",
+    "request_method": "POST",
+    "request_payload": {
+      "term": "{}",
+      "fields": ["username"],
+      "wildcard": false,
+      "case_sensitive": false,
+      "categories": []
+    },
+    "url": "https://breach.vip",
+    "urlMain": "https://breach.vip/",
+    "urlProbe": "https://breach.vip/api/search",
+    "fields": {
+        "results": {
+            "Source": "source",
+            "Categories": "categories",
+            "Name": "name",
+            "First Name": "firstname",
+            "Last Name": "lastname",
+            "Email": "email",
+            "Password": [
+                "password",
+                "m_password"
+            ],
+            "IP": "ip",
+            "Register IP": "regip",
+            "Continent": "continent",
+            "Address": "address",
+            "Country": "country",
+            "City": "city",
+            "Postal Code": "postal_code",
+            "Timezone": "timezone",
+            "Date Of Birth": [
+                "dateofbirth",
+                "date_of_birth",
+                "birthday"
+            ],
+            "Gender": [
+                "gender",
+                "sex"
+            ],
+            "Language": [
+                "language",
+                "locale"
+            ],
+            "Occupation": "occupation",
+            "Secret Question": "user_secret_question",
+            "Secret Answer": "secret_answer",
+            "Creation Date": [
+                "joined",
+                "joindate",
+                "regdate",
+                "registration_date",
+                "registered_date",
+                "registrationdate",
+                "register_date",
+                "registered",
+                "createdate",
+                "create_date",
+                "created_at",
+                "registerdate"
+            ],
+            "Last Modified": "last_modified",
+            "Breach Date": "_breach_date",
+            "Domain": "domain"
+        }
+    },
+    "username_claimed": "test"
+  },
   "BugCrowd": {
     "errorType": "status_code",
     "url": "https://bugcrowd.com/{}",
@@ -1394,7 +1465,10 @@
   },
   "Inkbunny": {
     "errorType": "message",
-    "errorMsg": "No users to list...",
+    "errorMsg": [
+        "<center><h1>404 Not Found</h1></center>",
+        "No users to list..."
+    ],
     "url": "https://inkbunny.net/{}",
     "urlMain": "https://inkbunny.net/",
     "archiveUrls": "https://inkbunny.net/{}",
@@ -1424,7 +1498,10 @@
     "username_claimed": "blue"
   },
   "interpals": {
-    "errorMsg": "User not found",
+    "errorMsg": [
+        "InterPals is currently undergoing scheduled maintenance.",
+        "User not found"
+    ],
     "errorType": "message",
     "url": "https://www.interpals.net/{}",
     "urlMain": "https://www.interpals.net/",
@@ -1587,6 +1664,7 @@
   "Laby.net": {
     "errorType": "message",
     "errorMsg": "is currently not registered.",
+    "regexCheck": "^[a-zA-Z0-9]{3,25}$",
     "url": "https://laby.net/{}",
     "urlMain": "https://laby.net/",
     "browserOnly": true,
@@ -1672,7 +1750,6 @@
   },
   "LinkedIn": {
     "errorType": "status_code",
-
     "regexCheck": "^[a-zA-Z0-9]{3,100}$",
     "request_method": "GET",
     "url": "https://linkedin.com/in/{}",
@@ -2038,7 +2115,7 @@
     "username_claimed": "mbostock"
   },
   "Odysee": {
-    "errorMsg": "<link rel=\"canonical\" content=\"odysee.com\"/>",
+    "errorMsg": "<meta name=\"description\" content=\"Explore a whole universe of videos on Odysee from regular people just like you!",
     "errorType": "message",
     "url": "https://odysee.com/@{}",
     "urlMain": "https://odysee.com/",
@@ -2696,7 +2773,10 @@
   },
   "Star Citizen": {
     "errorType": "message",
-    "errorMsg": "404",
+    "errorMsg": [
+        "403 Forbidden",
+        "404"
+    ],
     "url": "https://robertsspaceindustries.com/citizens/{}",
     "urlMain": "https://robertsspaceindustries.com/",
     "username_claimed": "blue"
@@ -2781,7 +2861,10 @@
     "username_claimed": "blue"
   },
   "Tiktok": {
-    "errorMsg": "\"statusCode\":10221",
+    "errorMsg": [
+        "\"statusCode\":10221",
+        "\"statusCode\":10202"
+    ],
     "errorType": "message",
     "regexCheck": "^[a-zA-Z0-9_.]{2,24}$",
     "url": "https://www.tiktok.com/@{}",
@@ -2965,6 +3048,7 @@
     "fields": {
         "Name": "profile-card-fullname",
         "Bio": "profile-bio",
+        "Location": "profile-location",
         "Joined": "profile-joindate",
         "Tweets": "profile-stat-num"
     },
@@ -3179,7 +3263,7 @@
   "WordPress": {
     "errorType": "response_url",
     "errorUrl": "wordpress.com/typo/?subdomain=",
-    "regexCheck": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+    "regexCheck": "^[a-zA-Z][a-zA-Z0-9-]*$",
     "url": "https://{}.wordpress.com/",
     "urlMain": "https://wordpress.com",
     "username_claimed": "blue"

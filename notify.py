@@ -8,12 +8,15 @@ from colorama import Fore, Style
 import webbrowser
 import textwrap
 import shutil
+import json
 import re
 
 # Global variable to count the number of results.
 globvar = 0
 wafvar = 0
 blockedvar = 0
+
+ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
 
 from __init__ import (
     __version__,
@@ -275,34 +278,7 @@ class QueryNotifyPrint(QueryNotify):
                 webbrowser.open(self.result.site_url_user, 2)
             if result.fields is not None:
                 for name, value in result.fields.items():
-                    prefix = (Style.BRIGHT + Fore.WHITE + "    - " + Style.RESET_ALL +
-                              Style.BRIGHT + Fore.GREEN + name + Style.RESET_ALL +
-                              Fore.WHITE + ": " + Style.RESET_ALL)
-
-                    visible_prefix = re.sub(r'\x1b\[[0-9;]*m', '', prefix)
-                    indent = " " * len(visible_prefix)
-
-                    term_width = shutil.get_terminal_size().columns
-                    wrap_width = max(40, term_width - len(visible_prefix))
-
-                    lines = str(value).splitlines()
-                    wrapped_lines = []
-
-                    for line in lines:
-                        if line.strip():
-                            wrapped = textwrap.wrap(
-                                line,
-                                width=wrap_width,
-                                break_long_words=False,
-                                break_on_hyphens=False,
-                                replace_whitespace=True
-                            )
-                            wrapped_lines.extend(wrapped)
-                        else:
-                            wrapped_lines.append("")
-
-                    formatted_value = ("\n" + indent).join(wrapped_lines)
-                    print(prefix + formatted_value)
+                    self.print_field(name, value)
 
         elif result.status == QueryStatus.AVAILABLE:
             if self.print_all:
@@ -402,6 +378,72 @@ class QueryNotifyPrint(QueryNotify):
                   Fore.WHITE + f"] {NumberOfBlock} " +
                   Fore.RED + "Site got country blocked"  +
                   Fore.YELLOW + " (proxy may help)" + Style.RESET_ALL)
+
+    def wrap_print(self, prefix, value):
+        visible_prefix = ANSI_RE.sub('', prefix)
+        indent = " " * len(visible_prefix)
+
+        term_width = shutil.get_terminal_size().columns
+        wrap_width = max(40, term_width - len(visible_prefix))
+
+        lines = str(value).splitlines()
+        wrapped_lines = []
+
+        for line in lines:
+            if line.strip():
+                wrapped = textwrap.wrap(
+                    line,
+                    width=wrap_width,
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                    replace_whitespace=True
+                )
+                wrapped_lines.extend(wrapped)
+            else:
+                wrapped_lines.append("")
+
+        formatted_value = ("\n" + indent).join(wrapped_lines)
+        print(prefix + formatted_value)
+
+    def print_field(self, name, value, level=1):
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.startswith("{") or stripped.startswith("["):
+                try:
+                    value = json.loads(stripped)
+                except json.JSONDecodeError:
+                    pass
+
+        bullet = "    " * level + "- "
+
+        prefix = (
+            Style.BRIGHT + Fore.WHITE + bullet + Style.RESET_ALL +
+            Style.BRIGHT + Fore.GREEN + str(name) + Style.RESET_ALL +
+            Fore.WHITE + ": " + Style.RESET_ALL
+        )
+
+        if isinstance(value, dict):
+            self.wrap_print(prefix, "")
+            for child_name, child_value in value.items():
+                self.print_field(child_name, child_value, level + 1)
+
+        elif isinstance(value, list):
+            print(prefix)
+
+            for index, item in enumerate(value, start=1):
+                if isinstance(item, dict):
+                    item_prefix = (Style.BRIGHT + Fore.WHITE + ("    " * (level + 1)) + Style.RESET_ALL)
+                    print(item_prefix)
+
+                    for child_name, child_value in item.items():
+                        self.print_field(child_name, child_value, level + 2)
+                elif isinstance(item, str):
+                    item_prefix = (Style.BRIGHT + Fore.WHITE + ("    " * (level + 1)) + Style.RESET_ALL)
+                    print(item_prefix + " - " + item)
+                else:
+                    self.print_field(f"Item #{index}", item, level + 1)
+        else:
+            self.wrap_print(prefix, value)
 
     def __str__(self):
         """Convert Object To String.
