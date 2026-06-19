@@ -369,7 +369,7 @@ with Camoufox(executable_path=r"{exe}") as browser:
 
     setup(
         name="soylock",
-        version="0.19.0",
+        version="0.19.1",
         description="",
         author="SystemCallW",
         packages=find_packages(),
