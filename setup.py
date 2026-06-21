@@ -46,7 +46,7 @@ PLATFORM_CONFIGS = {
         "repo": "camoufox",
         "tag": "v150.0.2-beta.25",
         "asset_version": "150.0.2-alpha.25",
-        "os_slug": "macos",
+        "os_slug": "mas",
         "arch": "x86_64",
     },
     "darwin-arm64": {
@@ -54,7 +54,7 @@ PLATFORM_CONFIGS = {
         "repo": "camoufox",
         "tag": "v150.0.2-beta.25",
         "asset_version": "150.0.2-alpha.25",
-        "os_slug": "macos",
+        "os_slug": "mac",
         "arch": "arm64",
     },
 }
