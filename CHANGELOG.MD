@@ -3,6 +3,7 @@ New Feature:
 - Breach.vip lookup
 
 Fixed:
+- Houzz
 - interpals
 
 Changes: 0.19.0 (beta)

@@ -251,6 +251,22 @@ class BrowserEngine:
                     if not allow_redirects:
                         req_kwargs["max_redirects"] = 0
 
+                    try:
+                        await page.goto(
+                            url,
+                            wait_until="domcontentloaded",
+                            timeout=timeout * 1000,
+                        )
+
+                        if await is_challenge_present(page):
+                            async with self._captcha_lock:
+                                solved = await click_cf_checkbox(page)
+                                if not solved:
+                                    print(f"Warning: Could not solve challenge for {url}")
+                                await asyncio.sleep(1)
+                    except:
+                        pass
+
                     request_context = page.request
                     if method == "GET":
                         response = await request_context.get(url, **req_kwargs)
@@ -258,11 +274,11 @@ class BrowserEngine:
                         response = await request_context.head(url, **req_kwargs)
                     elif method == "POST":
                         if json is not None:
-                            req_kwargs["json"] = json
+                            req_kwargs["data"] = json
                         response = await request_context.post(url, **req_kwargs)
                     elif method == "PUT":
                         if json is not None:
-                            req_kwargs["json"] = json
+                            req_kwargs["data"] = json
                         response = await request_context.put(url, **req_kwargs)
                     else:
                         raise RuntimeError(f"Unsupported HTTP method for browser engine: {method}")

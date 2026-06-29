@@ -182,7 +182,9 @@ async def soylock(
         'https://assets.guns.lol/wasm/gpp_gunslol.js', # 2026-06-09 guns.lol
         '<title>Reddit - Please wait for verification</title>', # 2026-06-10 Reddit
         'This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.', # 2026-06-14 Cloudflare
-        'You\'ve been blocked by network security.' # 2026-06-14 Reddit
+        'You\'ve been blocked by network security.', # 2026-06-14 Reddit
+        '<title>Just a moment...</title>', # 2026-06-28 Cloudflare
+        '<div id="loading-error" role="alert" aria-live="polite">' # 2026-06-28 Houzz
     ]
 
     RegulationHitMsgs = [

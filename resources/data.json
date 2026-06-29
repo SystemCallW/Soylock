@@ -1393,7 +1393,8 @@
     "username_claimed": "Blue"
   },
   "Houzz": {
-    "errorType": "status_code",
+    "errorType": "message",
+    "errorMsg": "The page you requested was not found.",
     "url": "https://houzz.com/user/{}",
     "urlMain": "https://houzz.com/",
     "username_claimed": "blue"
